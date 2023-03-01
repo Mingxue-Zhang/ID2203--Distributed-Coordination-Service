@@ -1,2 +1,2 @@
-# ID2203--Distributed-Coordination-Service
-This repo is for ID2203 Final project
+# ddbb-rust
+> A distributed key-value store similar to etcd
