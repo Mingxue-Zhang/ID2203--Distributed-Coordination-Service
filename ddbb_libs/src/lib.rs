@@ -1,7 +1,10 @@
 #![allow(unused)]
-mod frame;
+pub mod frame;
+pub mod connection;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
 mod tests {
@@ -30,9 +33,9 @@ mod tests {
 
 
         /// #EXAMPLE: parse Frame from buffer of BytesMut
-        /// the buffer, can used by the network transportation
+        // the buffer, can used by the network transportation
         let mut buffer_bytes_mut = BytesMut::with_capacity(64);
-        /// see more Frame data types here: https://redis.io/docs/reference/protocol-spec/
+        // see more Frame data types here: https://redis.io/docs/reference/protocol-spec/
         let bin_str = b"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n";
         buffer_bytes_mut.put(&bin_str[..]);
         let mut cursor_on_buffer = Cursor::new(&buffer_bytes_mut[..]);
