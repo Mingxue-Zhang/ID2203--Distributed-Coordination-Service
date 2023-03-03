@@ -22,11 +22,11 @@ mod tests {
 
         /// #Example: serialized Frame to BytesMut
         let serialized = frame.serialize();
-        println!("{:?}", serialized);
+        /// println!("{:?}", serialized);
 
         /// #Example: deserialize BytesMut to Frame
         let fame_res = Frame::deserialize(&serialized);
-        println!("{:?}", fame_res.unwrap_or(Frame::Null));
+        /// println!("{:?}", fame_res.unwrap_or(Frame::Null));
 
 
         /// #EXAMPLE: parse Frame from buffer of BytesMut
