@@ -9,11 +9,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Connect to a peer
     let mut stream = TcpStream::connect("127.0.0.1:6142").await?;
     let mut connection = Connection::new(stream);
-    connection.write_frame(&Frame::Simple("hello world".to_string()));
+    connection.write_frame(&Frame::Simple("hello world".to_string())).await.unwrap_or(());
     // Write some data.
+    connection.write_frame(&Frame::Simple("hello world".to_string())).await.unwrap_or(());
     loop {
-        println!("a");
-        connection.write_frame(&Frame::Simple("hello world".to_string()));
+        connection.write_frame(&Frame::Simple("hello world".to_string())).await.unwrap_or(());
+
     }
     Ok(())
 }
