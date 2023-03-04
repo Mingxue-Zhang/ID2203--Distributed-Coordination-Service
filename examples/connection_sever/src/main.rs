@@ -12,10 +12,9 @@ async fn main() -> io::Result<()> {
         let (mut stream, _) = listener.accept().await?;
         let mut connection = Connection::new(stream);
         tokio::spawn(async move {
-            loop {
-                let f = connection.read_frame().await;
-                println!("{:?}", f);
-            }
+            let f = connection.read_frame().await;
+            println!("{:?}", f);
+            connection.write_frame(&Frame::Simple("Pong!".to_string())).await.unwrap_or(());
         });
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "temp"
+name = "connection_client"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-ddbb_libs = { path = "../ddbb_libs" }
+ddbb_libs = { path = "../../ddbb_libs" }
+bytes = "1"
