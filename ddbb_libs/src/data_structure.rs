@@ -10,6 +10,7 @@ pub trait FrameCast {
     fn from_frame(frame: &Frame) -> Result<Box<Self>, Error>;
 }
 
+/// For ddbb user.
 #[derive(Clone, Debug)]
 pub enum DataEntry {
     KeyValue {
@@ -18,6 +19,7 @@ pub enum DataEntry {
     },
 }
 
+/// For omni-paxos.
 #[derive(Clone, Debug)]
 pub enum LogEntry {
     SetValue {
@@ -26,6 +28,7 @@ pub enum LogEntry {
     },
 }
 
+/// For ddbb_client and ddbb_sever.
 #[derive(Clone, Debug)]
 pub enum CommandEntry {
     SetValue {
@@ -37,6 +40,7 @@ pub enum CommandEntry {
     },
 }
 
+/// For ddbb_client and ddbb_server
 #[derive(Clone, Debug)]
 pub enum MessageEntry {
     Success {

@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         value: Bytes::from("tempValue"),
     };
 
-    connection.write_frame(&command1.to_frame()).await.unwrap();
+    connection.write_frame(&command1.to_frame()).await;
     let res1 = connection.read_frame().await.unwrap().unwrap();
     match *MessageEntry::from_frame(&res1).unwrap(){
         MessageEntry::Success {msg} => {
