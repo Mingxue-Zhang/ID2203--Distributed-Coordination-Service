@@ -1,26 +1,40 @@
 #![allow(unused)]
+
 pub mod frame;
 pub mod connection;
+pub mod data_structure;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
+/// Just for convenience.
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
     use bytes::{Buf, BufMut, Bytes, BytesMut};
+    use crate::data_structure::{CommandEntry, FrameCast, DataEntry, LogEntry};
+    use crate::frame::Frame;
     use crate::frame::Frame::Null;
     use super::*;
 
     #[test]
     fn test_frame() {
+        /// Examples of Fame data types
+        // let frame = Frame::Array(vec![
+        //     Frame::Simple("Hello ".to_string()),
+        //     Frame::Bulk(Bytes::from("world!")),
+        //     Frame::Null,
+        //     Frame::Error("This is an Frame::Error, with a Frame:Integer:".to_string()),
+        //     Frame::Integer(150)
+        // ]);
+
         use frame::{Frame, Error::Incomplete};
 
         /// #Example: init frame
         let frame = Frame::Array(vec![
             Frame::Simple("hello ".to_string()),
-            Frame::Bulk(Bytes::from("world!"))
+            Frame::Bulk(Bytes::from("world!")),
         ]);
 
         /// #Example: serialized Frame to BytesMut
@@ -52,6 +66,27 @@ mod tests {
 
             Err(e) => panic!(),
         };
+    }
 
+    #[test]
+    fn temp() {
+        use data_structure::LogEntry;
+        let temp = DataEntry::KeyValue{
+            key: "tempKey".to_string(),
+            value: Bytes::from("tempValue")
+        };
+        println!("{:?}", temp.to_frame());
+        let temp = DataEntry::from_frame(&temp.to_frame());
+        match *temp.unwrap() {
+            DataEntry::KeyValue{key,value} => {
+                println!("{}, {:?}", key, value);
+            }
+            _ => {}
+        }
+        // println!("{:?}", &temp);
+
+
+        // let LogEntry::SetValue {key, ..} = temp.clone();
+        // println!("{:?}", temp);
     }
 }
