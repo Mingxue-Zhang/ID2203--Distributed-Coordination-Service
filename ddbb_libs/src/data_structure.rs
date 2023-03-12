@@ -38,6 +38,7 @@ pub enum CommandEntry {
     GetValue {
         key: String,
     },
+    Empty,
 }
 
 /// For ddbb_client and ddbb_server
@@ -177,6 +178,9 @@ impl FrameCast for CommandEntry {
                     Frame::Simple("CommandEntry::GetValue".to_string()),
                     Frame::Simple(key.to_string()),
                 ])
+            }
+            CommandEntry::Empty=>{
+                Frame::Array(vec![])
             }
         };
     }
