@@ -1,18 +1,18 @@
 use omnipaxos_core::messages::ballot_leader_election::BLEMessage;
 use serde_json;
 
-pub use ddbb_libs::data_structure::{ LogEntry, FrameCast };
+pub use ddbb_libs::data_structure::{FrameCast, LogEntry};
 pub use ddbb_libs::frame::Frame;
 
 use crate::{Error, Result};
 
 /// For network transportation
 #[derive(Clone, Debug)]
-pub struct BLEMessageEntry{
+pub struct BLEMessageEntry {
     pub(crate) ble_msg: BLEMessage,
 }
 
-impl FrameCast for BLEMessageEntry{
+impl FrameCast for BLEMessageEntry {
     fn to_frame(&self) -> Frame {
         Frame::Array(vec![
             // begin tag
@@ -35,9 +35,29 @@ impl FrameCast for BLEMessageEntry{
                 }
 
                 _ => Err(frame.to_error()).into(),
-            }
+            },
 
-            _ => Err(frame.to_error()).into()
+            _ => Err(frame.to_error()).into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_blemessage_entry() {
+        let ble = BLEMessage {
+            from: 1,
+            to: 2,
+            msg: omnipaxos_core::messages::ballot_leader_election::HeartbeatMsg::Request(
+                omnipaxos_core::messages::ballot_leader_election::HeartbeatRequest { round: 1 },
+            ),
+        };
+        let ble_entry = BLEMessageEntry { ble_msg: ble };
+        let ble_frame = ble_entry.to_frame();
+        let ble_deserialized = BLEMessageEntry::from_frame(&ble_frame).unwrap();
+        println!("{:?}", ble_deserialized);
     }
 }
