@@ -20,9 +20,10 @@ use op_data_structure::LogEntry;
 
 
 pub mod op_data_structure;
-
+mod op_connection;
 
 type OmniPaxosInstance = OmniPaxos<LogEntry, (), MemoryStorage<LogEntry, ()>>;
+
 
 // pub struct OmniPaxosServer {
 //     pub omni_paxos_instance: Arc<Mutex<OmniPaxosInstance>>,
