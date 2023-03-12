@@ -555,9 +555,12 @@ dependencies = [
 name = "ddbb_server"
 version = "0.1.0"
 dependencies = [
+ "ddbb_libs",
  "omnipaxos_core",
  "omnipaxos_storage",
  "serde_json",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

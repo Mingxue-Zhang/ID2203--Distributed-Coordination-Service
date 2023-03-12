@@ -1,0 +1,1 @@
+pub use ddbb_libs::data_structure::LogEntry;

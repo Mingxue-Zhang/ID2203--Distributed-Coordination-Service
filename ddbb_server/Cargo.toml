@@ -9,3 +9,6 @@ edition = "2021"
 serde_json = "1.0"
 omnipaxos_core = { path = "../omnipaxos_core" }
 omnipaxos_storage = { path = "../omnipaxos_storage" }
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+ddbb_libs = { path = "../ddbb_libs" }

@@ -1,4 +1,7 @@
 #![allow(unused)]
+mod omni_paxos_server;
+mod config;
+
 use omnipaxos_core::messages::ballot_leader_election::BLEMessage;
 use serde_json::Result;
 
@@ -12,4 +15,5 @@ fn main() {
     let deserialize_ble: BLEMessage = serde_json::from_slice(&serialized_ble[..]).unwrap();
     println!("Hello, world!");
     println!("{:?}", deserialize_ble);
+
 }
