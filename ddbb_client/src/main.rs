@@ -1,4 +1,5 @@
 //Imports
+#![allow(unused)]
 use std::env;
 use std::error::Error;
 
@@ -58,15 +59,25 @@ async fn main()  {
         
         // println!("{:?}", input_vector); for testing 
         if input_vector[0] == "get" {
-            // sender_messages.send(("get", bincode::serialize(&input).unwrap())).await.unwrap();
-            user_cmd = CommandEntry::GetValue { key: input_vector[1].to_string()};
-            message_sender(user_cmd).await;
+            if input_vector.len() == 2 {
+                // sender_messages.send(("get", bincode::serialize(&input).unwrap())).await.unwrap();
+                user_cmd = CommandEntry::GetValue { key: input_vector[1].to_string()};
+                message_sender(user_cmd).await;
+            } else {
+                println!(" -> ERROR: Incorrect  command");
+            }
+            
 
         }
         else if input_vector[0] == "set" {
-            // sender_messages.send(("set", bincode::serialize(&input).unwrap())).await.unwrap();
-            user_cmd = CommandEntry::SetValue { key: input_vector[1].to_string(), value: Bytes::from(input_vector[2].to_string()) };
-            message_sender(user_cmd).await;
+            if input_vector.len() == 3 {
+                // sender_messages.send(("set", bincode::serialize(&input).unwrap())).await.unwrap();
+                user_cmd = CommandEntry::SetValue { key: input_vector[1].to_string(), value: Bytes::from(input_vector[2].to_string()) };
+                message_sender(user_cmd).await;
+            } else {
+                println!(" -> ERROR: Incorrect command");
+            }
+            
         }
         else{
             //If it is not a put or a get
