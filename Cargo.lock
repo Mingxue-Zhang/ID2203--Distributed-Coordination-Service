@@ -67,6 +67,9 @@ name = "ddbb_client"
 version = "0.1.0"
 dependencies = [
  "argrments",
+ "bytes",
+ "ddbb_libs",
+ "tokio",
 ]
 
 [[package]]

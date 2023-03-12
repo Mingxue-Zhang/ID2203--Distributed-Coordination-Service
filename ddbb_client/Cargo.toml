@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 argrments = { path = "./argrments" }
+tokio = { version = "1", features = ["full"] }
+ddbb_libs = { path = "../ddbb_libs" }
+bytes = "1"
