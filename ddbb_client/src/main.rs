@@ -1,5 +1,6 @@
 //Imports
 use std::env;
+use std::error::Error;
 
 //Tokio - used for network stuff
 use tokio::{
@@ -10,7 +11,6 @@ use tokio::{
 //Serde - used for serializing (turning into bytes) and deserializing messages
 use serde::{Serialize, Deserialize};
 use async_stream::try_stream;
-use std::error::Error;
 use bytes::Bytes;
 use std::io::{ErrorKind};
 use std::time::Duration;
@@ -20,7 +20,7 @@ use ddbb_libs::data_structure::{CommandEntry, DataEntry, FrameCast, MessageEntry
 use ddbb_libs::connection::Connection;
 
 #[tokio::main]
-async fn main(){
+async fn main()  {
 
     // let (sender_peers, receiver) = mpsc::channel(32);
     // let sender_messages = sender_peers.clone();
@@ -28,9 +28,9 @@ async fn main(){
     let mut user_cmd: CommandEntry = CommandEntry::Empty;
     
     //Spawn threads
-    tokio::spawn(async move {
-        message_sender(user_cmd).await;
-    }); 
+    // tokio::spawn(async move {
+    //     message_sender(user_cmd).await;
+    // }); 
 
 
     // let env_args = env::args().collect();
@@ -60,12 +60,13 @@ async fn main(){
         if input_vector[0] == "get" {
             // sender_messages.send(("get", bincode::serialize(&input).unwrap())).await.unwrap();
             user_cmd = CommandEntry::GetValue { key: input_vector[1].to_string()};
+            message_sender(user_cmd).await;
 
         }
         else if input_vector[0] == "set" {
             // sender_messages.send(("set", bincode::serialize(&input).unwrap())).await.unwrap();
             user_cmd = CommandEntry::SetValue { key: input_vector[1].to_string(), value: Bytes::from(input_vector[2].to_string()) };
-           
+            message_sender(user_cmd).await;
         }
         else{
             //If it is not a put or a get
@@ -122,6 +123,7 @@ async fn message_sender(mut user_cmd: CommandEntry) -> Result<(), Box<dyn Error>
         _ => {
             println!("Wrong command!")
         }
+
     }
     Ok(())
 }

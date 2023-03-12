@@ -107,18 +107,6 @@ name = "ddbb_client"
 version = "0.1.0"
 dependencies = [
  "argrments",
- "async-stream",
- "atoi 2.0.0",
- "bincode",
- "bytes",
- "ddbb_libs",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
 ]
 
 [[package]]

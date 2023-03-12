@@ -176,6 +176,7 @@ impl FrameCast for CommandEntry {
                 Frame::Array(vec![
                     // begin tag
                     Frame::Simple("CommandEntry::GetValue".to_string()),
+                    Frame::Simple("CommandEntry::GetValue".to_string()), //不知道为什么要多加一行，不然会报错
                     Frame::Simple(key.to_string()),
                 ])
             }
@@ -188,16 +189,19 @@ impl FrameCast for CommandEntry {
     fn from_frame(frame: &Frame) -> Result<Box<Self>, Error> {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
+
+                /// CommandEntry::GetValue
+                [begin_tag, key, value] if *begin_tag == "CommandEntry::GetValue" => Ok(Box::new(CommandEntry::GetValue {
+                    key: key.to_string(),
+                })),
+
                 /// CommandEntry::SetValue
                 [begin_tag, key, value] if *begin_tag == "CommandEntry::SetValue" => Ok(Box::new(CommandEntry::SetValue {
                     key: key.to_string(),
                     value: Bytes::from(value.to_string()),
                 })),
 
-                /// CommandEntry::GetValue
-                [begin_tag, key, value] if *begin_tag == "CommandEntry::GetValue" => Ok(Box::new(CommandEntry::GetValue {
-                    key: key.to_string(),
-                })),
+
                 _ => Err(frame.to_error()).into(),
             }
             _ => Err(frame.to_error()).into()
