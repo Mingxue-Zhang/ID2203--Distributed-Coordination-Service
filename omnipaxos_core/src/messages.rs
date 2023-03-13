@@ -6,6 +6,7 @@ use crate::{
 
 /// Internal component for log replication
 pub mod sequence_paxos {
+    use serde::{Serialize, Deserialize};
     use crate::{
         ballot_leader_election::Ballot,
         storage::{Entry, Snapshot, SnapshotType, StopSign},
@@ -14,7 +15,7 @@ pub mod sequence_paxos {
     use std::fmt::Debug;
 
     /// Prepare message sent by a newly-elected leader to initiate the Prepare phase.
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
     pub struct Prepare {
         /// The current round.
         pub n: Ballot,
@@ -27,7 +28,7 @@ pub mod sequence_paxos {
     }
 
     /// Promise message sent by a follower in response to a [`Prepare`] sent by the leader.
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct Promise<T, S>
     where
         T: Entry,
@@ -50,7 +51,7 @@ pub mod sequence_paxos {
     }
 
     /// AcceptSync message sent by the leader to synchronize the logs of all replicas in the prepare phase.
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct AcceptSync<T, S>
     where
         T: Entry,
@@ -71,14 +72,14 @@ pub mod sequence_paxos {
     }
 
     /// The first accept message sent. Only used by a pre-elected leader after reconfiguration.
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct FirstAccept {
         /// The current round.
         pub n: Ballot,
     }
 
     /// Message with entries to be replicated and the latest decided index sent by the leader in the accept phase.
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct AcceptDecide<T>
     where
         T: Entry,
@@ -92,7 +93,7 @@ pub mod sequence_paxos {
     }
 
     /// Message sent by follower to leader when entries has been accepted.
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
     pub struct Accepted {
         /// The current round.
         pub n: Ballot,
@@ -101,7 +102,7 @@ pub mod sequence_paxos {
     }
 
     /// Message sent by leader to followers to decide up to a certain index in the log.
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
     pub struct Decide {
         /// The current round.
         pub n: Ballot,
@@ -110,7 +111,7 @@ pub mod sequence_paxos {
     }
 
     /// Message sent by leader to followers to accept a StopSign
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct AcceptStopSign {
         /// The current round.
         pub n: Ballot,
@@ -119,14 +120,14 @@ pub mod sequence_paxos {
     }
 
     /// Message sent by followers to leader when accepted StopSign
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
     pub struct AcceptedStopSign {
         /// The current round.
         pub n: Ballot,
     }
 
     /// Message sent by leader to decide a StopSign
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
     pub struct DecideStopSign {
         /// The current round.
         pub n: Ballot,
@@ -134,7 +135,7 @@ pub mod sequence_paxos {
 
     /// Compaction Request
     #[allow(missing_docs)]
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub enum Compaction {
         Trim(u64),
         Snapshot(Option<u64>),
@@ -142,7 +143,7 @@ pub mod sequence_paxos {
 
     /// An enum for all the different message types.
     #[allow(missing_docs)]
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub enum PaxosMsg<T, S>
     where
         T: Entry,
@@ -168,7 +169,7 @@ pub mod sequence_paxos {
     }
 
     /// A struct for a Paxos message that also includes sender and receiver.
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct PaxosMessage<T, S>
     where
         T: Entry,

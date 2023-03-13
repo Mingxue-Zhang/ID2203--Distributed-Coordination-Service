@@ -2,7 +2,7 @@
 use bytes::Bytes;
 use crate::frame::{Frame};
 use crate::Error;
-
+use serde::{Serialize, Deserialize};
 
 pub trait FrameCast {
     fn to_frame(&self) -> Frame;

@@ -1,5 +1,7 @@
 use omnipaxos_core::messages::Message as OmniMessage;
 use omnipaxos_core::util::NodeId;
+use tokio::net::TcpListener;
+use tokio::io;
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -11,17 +13,48 @@ type OmniMessageBuf = Arc<Mutex<VecDeque<OmniMessage<LogEntry, ()>>>>;
 
 /// single incoming and multiple outgoing connection for OmniPaxos instances' communication
 pub struct OmniSIMO {
+    self_addr: String,
+    // nodeid: 6, addr: "127.0.0.1:25536"
+    peers: HashMap<NodeId, String>,
     outgoing_buffer: OmniMessageBuf,
     incoming_buffer: OmniMessageBuf,
-    connections: HashMap<NodeId, Connection>,
 }
 
 impl OmniSIMO {
-    pub fn build(self_addr: &str, peers: HashMap<NodeId, &str>) -> OmniSIMO {
+    pub fn build(self_addr: &String, peers: &HashMap<NodeId, String>) -> OmniSIMO {
         OmniSIMO{
             outgoing_buffer: Arc::new(Mutex::new(VecDeque::new())),
             incoming_buffer: Arc::new(Mutex::new(VecDeque::new())),
-            connections: todo!(),
-        };
+            self_addr: self_addr.clone(),
+            peers: peers.clone(),
+        }
+
+    }
+
+    // handle incoming connection requires
+    async fn start_incoming_listener(self_addr: &String){
+        let listener = TcpListener::bind(self_addr).await.unwrap();
+
+        tokio::spawn(async move {
+            let (mut stream, addr) = listener.accept().await.unwrap();
+            let mut connection = Connection::new(stream);
+    
+            tokio::spawn(async move {
+                todo!("hadle incoming connection");
+                // let msg_frame = connection.read_frame().await.unwrap().unwrap();
+                // match *CommandEntry::from_frame(&msg_frame).unwrap() {
+                //     CommandEntry::SetValue { key, value } => {
+                //         println!("Receive command: {}, {:?}", key, value);
+                //         let res = MessageEntry::Success { msg: "Operation success".to_string() };
+                //         connection.write_frame(&res.to_frame()).await.unwrap_or(());
+                //     }
+    
+                //     _ => {}
+                // }
+            });        
+        });
+
+        
+        
     }
 }

@@ -12,7 +12,7 @@ async fn main() -> io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:6142").await.unwrap();
 
     loop {
-        let (mut stream, _) = listener.accept().await?;
+        let (mut stream, addr) = listener.accept().await?;
         let mut connection = Connection::new(stream);
         tokio::spawn(async move {
             let req1 = connection.read_frame().await.unwrap().unwrap();

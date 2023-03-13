@@ -20,7 +20,7 @@ use op_data_structure::LogEntry;
 
 
 pub mod op_data_structure;
-mod op_connection;
+pub mod op_connection;
 
 type OmniPaxosInstance = OmniPaxos<LogEntry, (), MemoryStorage<LogEntry, ()>>;
 

@@ -547,6 +547,7 @@ version = "0.1.0"
 dependencies = [
  "atoi",
  "bytes",
+ "serde",
  "tokio",
  "tokio-stream",
 ]
@@ -555,9 +556,11 @@ dependencies = [
 name = "ddbb_server"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "ddbb_libs",
  "omnipaxos_core",
  "omnipaxos_storage",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-stream",

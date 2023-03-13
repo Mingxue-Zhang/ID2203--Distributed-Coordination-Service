@@ -1,8 +1,9 @@
 use omnipaxos_core::messages::ballot_leader_election::BLEMessage;
 use serde_json;
 
-pub use ddbb_libs::data_structure::{FrameCast, LogEntry};
-pub use ddbb_libs::frame::Frame;
+use ddbb_libs::data_structure::FrameCast;
+use ddbb_libs::frame::Frame;
+pub use ddbb_libs::data_structure::LogEntry;
 
 use crate::{Error, Result};
 
