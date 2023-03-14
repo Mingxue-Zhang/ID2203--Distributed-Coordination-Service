@@ -25,21 +25,21 @@ struct Temp {
 
 #[tokio::main]
 async fn main() {
-    // let ble = BLEMessage {
-    //     from: 1,
-    //     to: 2,
-    //     msg: omnipaxos_core::messages::ballot_leader_election::HeartbeatMsg::Request(
-    //         omnipaxos_core::messages::ballot_leader_election::HeartbeatRequest { round: 1 },
-    //     ),
-    // };
-    // let omni_message: PaxosMessage<Temp, ()> = PaxosMessage {
-    //     from: 1,
-    //     to: 2,
-    //     msg: PaxosMsg::ProposalForward(vec![Temp { key: "tempKey".to_string()}]),
-    // };
-    // let b = serde_json::to_string(&omni_message).unwrap();
-    // let c: PaxosMessage<Temp, ()> = serde_json::from_str(&b[..]).unwrap();
-    // println!("{:?}", c);
+    let ble = BLEMessage {
+        from: 1,
+        to: 2,
+        msg: omnipaxos_core::messages::ballot_leader_election::HeartbeatMsg::Request(
+            omnipaxos_core::messages::ballot_leader_election::HeartbeatRequest { round: 1 },
+        ),
+    };
+    let omni_message: PaxosMessage<Temp, ()> = PaxosMessage {
+        from: 1,
+        to: 2,
+        msg: PaxosMsg::ProposalForward(vec![Temp { key: "tempKey".to_string()}]),
+    };
+    let b = serde_json::to_string(&omni_message).unwrap();
+    let c: PaxosMessage<Temp, ()> = serde_json::from_str(&b[..]).unwrap();
+    println!("{:?}", c);
 
     
     // println!("OmniSIMO::start_incoming_listener().await: {:?}", OmniSIMO::start_incoming_listener().await);;

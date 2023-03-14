@@ -23,6 +23,7 @@ pub mod op_data_structure;
 pub mod op_connection;
 
 type OmniPaxosInstance = OmniPaxos<LogEntry, (), MemoryStorage<LogEntry, ()>>;
+type OmniMessage = Message<LogEntry,()>;
 
 
 // pub struct OmniPaxosServer {

@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     messages::{ballot_leader_election::BLEMessage, sequence_paxos::PaxosMessage},
     storage::{Entry, Snapshot},
@@ -229,7 +231,7 @@ pub mod ballot_leader_election {
 
 #[allow(missing_docs)]
 /// Message in OmniPaxos. Can be either a `SequencePaxos` message (for log replication) or `BLE` message (for leader election)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Message<T, S>
 where
     T: Entry,

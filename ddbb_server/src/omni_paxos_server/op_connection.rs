@@ -7,7 +7,7 @@ use tokio::task::JoinHandle;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-use super::op_data_structure::{BLEMessageEntry, LogEntry};
+use super::op_data_structure::{OmniMessageEntry, LogEntry};
 use ddbb_libs::connection::{self, Connection};
 use ddbb_libs::{Error, Result};
 

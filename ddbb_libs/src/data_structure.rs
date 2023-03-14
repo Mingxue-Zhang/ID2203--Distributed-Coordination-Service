@@ -1,8 +1,8 @@
+use crate::frame::Frame;
+use crate::Error;
 /// data structures of ddbb system
 use bytes::Bytes;
-use crate::frame::{Frame};
-use crate::Error;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub trait FrameCast {
     fn to_frame(&self) -> Frame;
@@ -13,42 +13,27 @@ pub trait FrameCast {
 /// For ddbb user.
 #[derive(Clone, Debug)]
 pub enum DataEntry {
-    KeyValue {
-        key: String,
-        value: Bytes,
-    },
+    KeyValue { key: String, value: Bytes },
 }
 
 /// For omni-paxos.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LogEntry {
-    SetValue {
-        key: String,
-        value: Bytes,
-    },
+    SetValue { key: String, value: Vec<u8> },
 }
 
 /// For ddbb_client and ddbb_sever.
 #[derive(Clone, Debug)]
 pub enum CommandEntry {
-    SetValue {
-        key: String,
-        value: Bytes,
-    },
-    GetValue {
-        key: String,
-    },
+    SetValue { key: String, value: Bytes },
+    GetValue { key: String },
 }
 
 /// For ddbb_client and ddbb_server
 #[derive(Clone, Debug)]
 pub enum MessageEntry {
-    Success {
-        msg: String
-    },
-    Error {
-        err_msg: String,
-    },
+    Success { msg: String },
+    Error { err_msg: String },
 }
 
 impl FrameCast for MessageEntry {
@@ -78,19 +63,23 @@ impl FrameCast for MessageEntry {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
                 /// MessageEntry::Success
-                [begin_tag, msg] if *begin_tag == "MessageEntry::Success" => Ok(Box::new(MessageEntry::Success {
-                    msg: msg.to_string(),
-                })),
+                [begin_tag, msg] if *begin_tag == "MessageEntry::Success" => {
+                    Ok(Box::new(MessageEntry::Success {
+                        msg: msg.to_string(),
+                    }))
+                }
 
                 /// MessageEntry::Error
-                [begin_tag, err_msg] if *begin_tag == "MessageEntry::Error" => Ok(Box::new(MessageEntry::Error {
-                    err_msg: err_msg.to_string(),
-                })),
+                [begin_tag, err_msg] if *begin_tag == "MessageEntry::Error" => {
+                    Ok(Box::new(MessageEntry::Error {
+                        err_msg: err_msg.to_string(),
+                    }))
+                }
 
                 _ => Err(frame.to_error()).into(),
-            }
+            },
 
-            _ => Err(frame.to_error()).into()
+            _ => Err(frame.to_error()).into(),
         }
     }
 }
@@ -114,14 +103,16 @@ impl FrameCast for DataEntry {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
                 /// DataEntry::KeyValue
-                [begin_tag, key, value] if *begin_tag == "DataEntry::KeyValue" => Ok(Box::new(DataEntry::KeyValue {
-                    key: key.to_string(),
-                    value: Bytes::from(value.to_string()),
-                })),
+                [begin_tag, key, value] if *begin_tag == "DataEntry::KeyValue" => {
+                    Ok(Box::new(DataEntry::KeyValue {
+                        key: key.to_string(),
+                        value: Bytes::from(value.to_string()),
+                    }))
+                }
                 _ => Err(frame.to_error()).into(),
-            }
+            },
 
-            _ => Err(frame.to_error()).into()
+            _ => Err(frame.to_error()).into(),
         }
     }
 }
@@ -135,7 +126,7 @@ impl FrameCast for LogEntry {
                     // begin tag
                     Frame::Simple("LogEntry::SetValue".to_string()),
                     Frame::Simple(key.to_string()),
-                    Frame::Bulk(value.clone()),
+                    Frame::Bulk(Bytes::from(value.clone())),
                 ])
             }
         };
@@ -145,14 +136,16 @@ impl FrameCast for LogEntry {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
                 /// LogEntry::SetValue
-                [begin_tag, key, value] if *begin_tag == "LogEntry::SetValue" => Ok(Box::new(LogEntry::SetValue {
-                    key: key.to_string(),
-                    value: Bytes::from(value.to_string()),
-                })),
+                [begin_tag, key, value] if *begin_tag == "LogEntry::SetValue" => {
+                    Ok(Box::new(LogEntry::SetValue {
+                        key: key.to_string(),
+                        value: Vec::from(value.to_string()),
+                    }))
+                }
                 _ => Err(frame.to_error()).into(),
-            }
+            },
 
-            _ => Err(frame.to_error()).into()
+            _ => Err(frame.to_error()).into(),
         }
     }
 }
@@ -185,18 +178,36 @@ impl FrameCast for CommandEntry {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
                 /// CommandEntry::SetValue
-                [begin_tag, key, value] if *begin_tag == "CommandEntry::SetValue" => Ok(Box::new(CommandEntry::SetValue {
-                    key: key.to_string(),
-                    value: Bytes::from(value.to_string()),
-                })),
+                [begin_tag, key, value] if *begin_tag == "CommandEntry::SetValue" => {
+                    Ok(Box::new(CommandEntry::SetValue {
+                        key: key.to_string(),
+                        value: Bytes::from(value.to_string()),
+                    }))
+                }
 
                 /// CommandEntry::GetValue
-                [begin_tag, key, value] if *begin_tag == "CommandEntry::GetValue" => Ok(Box::new(CommandEntry::GetValue {
-                    key: key.to_string(),
-                })),
+                [begin_tag, key, value] if *begin_tag == "CommandEntry::GetValue" => {
+                    Ok(Box::new(CommandEntry::GetValue {
+                        key: key.to_string(),
+                    }))
+                }
                 _ => Err(frame.to_error()).into(),
-            }
-            _ => Err(frame.to_error()).into()
+            },
+            _ => Err(frame.to_error()).into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_entry() {
+        let log = LogEntry::SetValue { key: "testKey".to_string(), value: Vec::from("tempValue") };
+        println!("log: {:?}", log);
+        let frame = log.to_frame();
+        let de_frame = LogEntry::from_frame(&frame).unwrap();
+        println!("de frame: {:?}", de_frame);
     }
 }
