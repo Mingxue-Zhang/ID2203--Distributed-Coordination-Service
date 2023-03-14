@@ -46,3 +46,28 @@ async fn main() {
     sleep(Duration::from_millis(10000)).await;
 
 }
+
+
+
+// test err in tokio::spawn
+async fn async_error() -> Result<()> {
+    let handler = tokio::spawn(async move {
+        sleep(Duration::from_millis(1000)).await;
+        async_err().await.unwrap()
+    });
+    println!("handler.await.unwrap(): {:?}", handler.await);;
+    return Ok(());
+}
+async fn async_err() -> Result<()> {
+    return Err("teest".into());
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_async_error() {
+        async_error().await.unwrap();
+    }
+}

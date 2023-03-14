@@ -1,13 +1,15 @@
 use omnipaxos_core::messages::Message as OmniMessage;
 use omnipaxos_core::util::NodeId;
-use tokio::net::TcpListener;
 use tokio::io;
+use tokio::net::TcpListener;
+use tokio::task::JoinHandle;
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use super::op_data_structure::{BLEMessageEntry, LogEntry};
-use ddbb_libs::connection::Connection;
+use ddbb_libs::connection::{self, Connection};
+use ddbb_libs::{Error, Result};
 
 type OmniMessageBuf = Arc<Mutex<VecDeque<OmniMessage<LogEntry, ()>>>>;
 
@@ -22,39 +24,46 @@ pub struct OmniSIMO {
 
 impl OmniSIMO {
     pub fn build(self_addr: &String, peers: &HashMap<NodeId, String>) -> OmniSIMO {
-        OmniSIMO{
+        OmniSIMO {
             outgoing_buffer: Arc::new(Mutex::new(VecDeque::new())),
             incoming_buffer: Arc::new(Mutex::new(VecDeque::new())),
             self_addr: self_addr.clone(),
             peers: peers.clone(),
         }
-
     }
 
-    // handle incoming connection requires
-    async fn start_incoming_listener(self_addr: &String){
+    // handle incoming connection reqs
+    async fn start_incoming_listener(self_addr: &String) -> JoinHandle<Result<()>> {
         let listener = TcpListener::bind(self_addr).await.unwrap();
 
-        tokio::spawn(async move {
-            let (mut stream, addr) = listener.accept().await.unwrap();
-            let mut connection = Connection::new(stream);
-    
-            tokio::spawn(async move {
-                todo!("hadle incoming connection");
-                // let msg_frame = connection.read_frame().await.unwrap().unwrap();
-                // match *CommandEntry::from_frame(&msg_frame).unwrap() {
-                //     CommandEntry::SetValue { key, value } => {
-                //         println!("Receive command: {}, {:?}", key, value);
-                //         let res = MessageEntry::Success { msg: "Operation success".to_string() };
-                //         connection.write_frame(&res.to_frame()).await.unwrap_or(());
-                //     }
-    
-                //     _ => {}
-                // }
-            });        
+        // thread for incoming listener
+        return tokio::spawn(async move {
+            loop {
+                let (mut stream, addr) = listener.accept().await.unwrap();
+                let mut connection = Connection::new(stream);
+                // thread for new connection
+                tokio::spawn(async move {
+                    Self::process_connection(connection);
+                });
+            }
+            // thread of req incoming listener
         });
+    }
 
-        
-        
+    async fn process_connection(mut connection: Connection) -> Result<()> {
+        let msg_frame = connection.read_frame().await?.unwrap();
+        todo!("MessageEntry");
+        // match *CommandEntry::from_frame(&msg_frame).unwrap() {
+        //     CommandEntry::SetValue { key, value } => {
+        //         println!("Receive command: {}, {:?}", key, value);
+        //         let res = MessageEntry::Success {
+        //             msg: "Operation success".to_string(),
+        //         };
+        //         connection.write_frame(&res.to_frame()).await.unwrap_or(());
+        //     }
+
+        //     _ => {}
+        // }
+        Ok(())
     }
 }
