@@ -3,12 +3,14 @@ use omnipaxos_core::messages::Message;
 use serde_json;
 
 use ddbb_libs::data_structure::FrameCast;
-pub use ddbb_libs::data_structure::LogEntry;
 use ddbb_libs::frame::Frame;
+pub use ddbb_libs::data_structure::LogEntry; 
 
 use super::OmniMessage;
 
 use crate::{Error, Result};
+
+pub type Snapshot = ();
 
 /// for network transportation of omnipaxos_core::messages::Message
 #[derive(Clone, Debug)]
@@ -68,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_omnimessage_entry() {
-        let paxos_message: PaxosMessage<LogEntry, ()> = PaxosMessage {
+        let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
             from: 1,
             to: 2,
             msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {

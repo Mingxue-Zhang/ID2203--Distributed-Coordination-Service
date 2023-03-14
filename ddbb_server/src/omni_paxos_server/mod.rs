@@ -1,7 +1,5 @@
 use omnipaxos_core::{
-    messages::Message,
-    omni_paxos::*,
-    util::LogEntry as OmniLogEntry,
+    messages::Message, omni_paxos::*, util::LogEntry as OmniLogEntry,
     util::NodeId as OmniNodeId,
 };
 use omnipaxos_storage::memory_storage::MemoryStorage;
@@ -12,19 +10,17 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{
-    config::{ELECTION_TIMEOUT, OUTGOING_MESSAGE_PERIOD},
-};
+use crate::config::{ELECTION_TIMEOUT, OUTGOING_MESSAGE_PERIOD};
 
 use op_data_structure::LogEntry;
 
+use self::op_data_structure::Snapshot;
 
-pub mod op_data_structure;
 pub mod op_connection;
+pub mod op_data_structure;
 
-type OmniPaxosInstance = OmniPaxos<LogEntry, (), MemoryStorage<LogEntry, ()>>;
-type OmniMessage = Message<LogEntry,()>;
-
+type OmniPaxosInstance = OmniPaxos<LogEntry, Snapshot, MemoryStorage<LogEntry, ()>>;
+type OmniMessage = Message<LogEntry, Snapshot>;
 
 // pub struct OmniPaxosServer {
 //     pub omni_paxos_instance: Arc<Mutex<OmniPaxosInstance>>,
