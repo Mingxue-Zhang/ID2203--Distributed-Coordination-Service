@@ -53,6 +53,7 @@ impl OmniSIMO {
         let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
         loop {
             println!("55");
+
             {
                 if let Some(outgoing_message) = outgoing_buffer.lock().unwrap().pop_front() {
                     let receiver = outgoing_message.get_receiver();
@@ -66,12 +67,12 @@ impl OmniSIMO {
                     }
                 }
             }
-            {
-                println!("68");
-                // @temp: interval of checking send buffer
-                sleep(Duration::from_millis(100)).await;
-                println!("71");
-            }
+            println!("68");
+            println!("lock70: {:?}", outgoing_buffer);
+            // @temp: interval of checking send buffer
+            sleep(Duration::from_millis(100)).await;
+            println!("71");
+
             println!("lock73: {:?}", outgoing_buffer);
         }
     }
@@ -108,6 +109,34 @@ impl OmniSIMO {
 
         Ok(())
     }
+}
+
+// @temp
+use omnipaxos_core::messages::{
+    ballot_leader_election::BLEMessage,
+    sequence_paxos::{PaxosMessage, PaxosMsg},
+};
+pub async fn test_send(simo: Arc<Mutex<OmniSIMO>>) {
+    tokio::spawn(async move {
+        let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
+            from: 1,
+            to: 2,
+            msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
+                key: "testKey".to_string(),
+                value: Vec::from("tempValue"),
+            }]),
+        };
+        let omni_message = OmniMessage::SequencePaxos(paxos_message);
+
+        println!("121");
+        simo.lock().unwrap().send_message(&omni_message);
+        println!("125");
+        simo.lock().unwrap().send_message(&omni_message);
+        simo.lock().unwrap().send_message(&omni_message);
+        simo.lock().unwrap().send_message(&omni_message);
+        println!("127");
+    })
+    .await;
 }
 
 #[cfg(test)]
