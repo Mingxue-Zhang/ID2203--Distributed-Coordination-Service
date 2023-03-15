@@ -48,6 +48,7 @@ impl OmniSIMO {
         let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
         loop {
             {
+                println!("51");
                 if let Some(outgoing_message) = outgoing_buffer.lock().unwrap().pop_front() {
                     let receiver = outgoing_message.get_receiver();
                     if let Some(receive_addr) = peers.lock().unwrap().get(&receiver) {
@@ -60,7 +61,6 @@ impl OmniSIMO {
                     }
                 }
             }
-            println!("63 lock: {:?}", outgoing_buffer);
             // @temp: interval of checking send buffer
             sleep(Duration::from_millis(100)).await;
         }
@@ -124,7 +124,7 @@ mod test {
         })
         .await;
         // block here
-        tokio::spawn(async { loop {} }).await;
+        // tokio::spawn(async { loop {} }).await;
     }
 
     async fn test_receive(simo: Arc<Mutex<OmniSIMO>>) {
@@ -165,10 +165,10 @@ mod test {
         let omni_simo_copy3 = omni_simo.clone();
         let omni_simo_copy4 = omni_simo.clone();
 
+        tokio::spawn(test_send(msg, omni_simo_copy3));
         tokio::select! {
             e = OmniSIMO::start_incoming_listener(omni_simo_copy1) => {println!("e: {:?}", e);}
             e = OmniSIMO::start_sender(omni_simo_copy2) => {println!("e: {:?}", e);}
-            _ = test_send(msg, omni_simo_copy3) => {}
             _ = test_receive(omni_simo_copy4) => {}
         }
     }
@@ -196,11 +196,11 @@ mod test {
         let omni_simo_copy3 = omni_simo.clone();
         let omni_simo_copy4 = omni_simo.clone();
 
+        tokio::spawn(test_send(msg, omni_simo_copy3));
         // start sender and listener
         tokio::select! {
             e = OmniSIMO::start_incoming_listener(omni_simo_copy1) => {println!("e: {:?}", e);}
             e = OmniSIMO::start_sender(omni_simo_copy2) => {println!("e: {:?}", e);}
-            _ = test_send(msg, omni_simo_copy3) => {}
             _ = test_receive(omni_simo_copy4) => {}
         }
     }

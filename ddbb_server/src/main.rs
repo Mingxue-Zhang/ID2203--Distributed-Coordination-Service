@@ -57,44 +57,36 @@ async fn test_receive(simo: Arc<Mutex<OmniSIMO>>) {
 
 #[tokio::main]
 async fn main() {
-    // let mut peers: HashMap<NodeId, String> = HashMap::new();
-    // peers.insert(2, "127.0.0.1:5660".to_string());
+    let mut peers: HashMap<NodeId, String> = HashMap::new();
+    peers.insert(2, "127.0.0.1:5660".to_string());
 
-    // let mut omni_simo = OmniSIMO::new("127.0.0.1:5661".to_string(), peers);
-    // let omni_simo = Arc::new(Mutex::new(omni_simo));
+    let mut omni_simo = OmniSIMO::new("127.0.0.1:5661".to_string(), peers);
+    let omni_simo = Arc::new(Mutex::new(omni_simo));
 
-    // // message
-    // let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
-    //     from: 1,
-    //     to: 2,
-    //     msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
-    //         key: "testKey".to_string(),
-    //         value: Vec::from("tempValue"),
-    //     }]),
-    // };
-    // let msg = OmniMessage::SequencePaxos(paxos_message);
+    // message
+    let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
+        from: 1,
+        to: 2,
+        msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
+            key: "testKey".to_string(),
+            value: Vec::from("tempValue"),
+        }]),
+    };
+    let msg = OmniMessage::SequencePaxos(paxos_message);
 
-    // // start sender and listener
-    // let omni_simo_copy1 = omni_simo.clone();
-    // let omni_simo_copy2 = omni_simo.clone();
-    // let omni_simo_copy3 = omni_simo.clone();
-    // let omni_simo_copy4 = omni_simo.clone();
+    // start sender and listener
+    let omni_simo_copy1 = omni_simo.clone();
+    let omni_simo_copy2 = omni_simo.clone();
+    let omni_simo_copy3 = omni_simo.clone();
+    let omni_simo_copy4 = omni_simo.clone();
 
-    // tokio::select! {
-    //     e = OmniSIMO::start_incoming_listener(omni_simo_copy1) => {println!("e: {:?}", e);}
-    //     e = OmniSIMO::start_sender(omni_simo_copy2) => {println!("e: {:?}", e);}
-    //     _ = test_send(msg, omni_simo_copy3) => {println!("89");}
-    //     _ = test_receive(omni_simo_copy4) => {println!("90");}
-    // }
-
-    let a = async { loop {} };
-    let b = async { println!("ss"); };
     tokio::select! {
-        biased;
-        _ = b => {}
-        _ = a => {}
-
+        e = OmniSIMO::start_incoming_listener(omni_simo_copy1) => {println!("e: {:?}", e);}
+        e = OmniSIMO::start_sender(omni_simo_copy2) => {println!("e: {:?}", e);}
+        _ = test_send(msg, omni_simo_copy3) => {println!("89");}
+        _ = test_receive(omni_simo_copy4) => {println!("90");}
     }
+
 }
 
 #[cfg(test)]
