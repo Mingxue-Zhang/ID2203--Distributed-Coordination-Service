@@ -62,3 +62,23 @@ pub enum MessageEntry {}
 The structure of data transported by network looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230305165825029.png" alt="image-20230305165825029" style="zoom: 50%;" />
+
+### Client
+
+Basically, the client of ddbb continuously listens to input from user in a loop and parses that input into a command entry. So far, we have implemented Set and Get request.
+
+```Rust
+enum CommandEntry {
+    SetValue {
+        key: String,
+        value: Bytes,
+    },
+    GetValue {
+        key: String,
+    },
+    Empty,
+}
+```
+
+The command will be sent to server and then wait for response, all transferring data are packed into the data structure *Frame*.
+
