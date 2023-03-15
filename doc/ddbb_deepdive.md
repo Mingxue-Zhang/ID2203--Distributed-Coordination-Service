@@ -63,4 +63,66 @@ The structure of data transported by network looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230305165825029.png" alt="image-20230305165825029" style="zoom: 50%;" />
 
-### ## A Big Defect With tikio::select!
+## ## A Big Defect With tikio::select!
+
+### Description
+
+Take a look at this case:
+
+```rust
+#[tokio::main]
+async fn main() {
+    let async_blocking = async { loop {}; };
+    let async_task = async { println!("ss"); };
+    tokio::select! {
+        _ = async_task => {}
+        _ = async_blocking => {}
+    }
+}
+```
+
+The `async_blocking` is a blocking async code block and the `async_task` is a non-blocking async task. With `tokio::select!` we can expect that one of the async tasks inside the `select!` will finish and the program will make progress (in this case, the`async_task` will always finish and program will return). **But the answer is NO!** 
+
+### Analyses
+
+As the description in the document of `tokio::select`:
+
+> By running all async expressions on the current task, the expressions are able to run **concurrently** but not in **parallel**. This means **all expressions are run on** **the same thread** and if one branch blocks the thread, all other expressions will be unable to continue. If parallelism is required, spawn each async expression using `tokio::spawn` and pass the join handle to `select!`.
+
+Which means in this case, the answer about if the program can make progress depends on which task will be chosen firstly to be  executed. So the program will have 50% chance to be blocking!
+
+### Solution
+
+- **Use `biased`**
+
+  We can use `biased` key word, and put the task which is likely to be blocking to the last of the task list.
+
+  ```rust
+  #[tokio::main]
+  async fn main() {
+      let async_blocking = async { loop {}; };
+      let async_task = async { println!("ss"); };
+      tokio::select! {
+          biased;
+          _ = async_task => {}
+          _ = async_blocking => {}
+      }
+  }
+  ```
+
+- **Make the execution parallel**
+
+  ```rust
+  #[tokio::main]
+  async fn main() {
+      let async_blocking = async { loop {}; };
+      let async_task = async { println!("ss"); };
+      tokio::select! {
+          biased;
+          _ = async_task => {}
+          _ = async_blocking => {}
+      }
+  }
+  ```
+
+  
