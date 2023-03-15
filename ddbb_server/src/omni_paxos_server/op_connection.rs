@@ -21,8 +21,8 @@ pub struct OmniSIMO {
     self_addr: String,
     /// #Example: nodeid: 6, addr: "127.0.0.1:25536"
     peers: Arc<Mutex<HashMap<NodeId, String>>>,
-    outgoing_buffer: OmniMessageBuf,
-    incoming_buffer: OmniMessageBuf,
+    pub outgoing_buffer: OmniMessageBuf,
+    pub incoming_buffer: OmniMessageBuf,
 }
 
 impl OmniSIMO {
@@ -35,11 +35,7 @@ impl OmniSIMO {
         }
     }
 
-    fn send_message(&self, omni_message: &OmniMessage) {
-        println!("39");
-        println!("40 lock: {:?}", self.outgoing_buffer);
-        let a = self.outgoing_buffer.lock();
-        println!("40");
+    pub fn send_message(&self, omni_message: &OmniMessage) {
         self.outgoing_buffer
             .lock()
             .unwrap()
@@ -48,12 +44,9 @@ impl OmniSIMO {
 
     /// #Descriptions: start the sender of an omni simo
     pub async fn start_sender(simo: Arc<Mutex<OmniSIMO>>) -> Result<()> {
-        println!("51");
         let peers = simo.lock().unwrap().peers.clone();
         let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
         loop {
-            println!("55");
-
             {
                 if let Some(outgoing_message) = outgoing_buffer.lock().unwrap().pop_front() {
                     let receiver = outgoing_message.get_receiver();
@@ -67,13 +60,9 @@ impl OmniSIMO {
                     }
                 }
             }
-            println!("68");
-            println!("lock70: {:?}", outgoing_buffer);
+            println!("63 lock: {:?}", outgoing_buffer);
             // @temp: interval of checking send buffer
             sleep(Duration::from_millis(100)).await;
-            println!("71");
-
-            println!("lock73: {:?}", outgoing_buffer);
         }
     }
 
@@ -101,7 +90,6 @@ impl OmniSIMO {
     ) -> Result<()> {
         let msg_frame = connection.read_frame().await?.unwrap();
         let omni_message_entry = *OmniMessageEntry::from_frame(&msg_frame).unwrap();
-        println!("receive: {:?}", omni_message_entry.omni_msg);
         incoming_buffer
             .lock()
             .unwrap()
@@ -109,34 +97,6 @@ impl OmniSIMO {
 
         Ok(())
     }
-}
-
-// @temp
-use omnipaxos_core::messages::{
-    ballot_leader_election::BLEMessage,
-    sequence_paxos::{PaxosMessage, PaxosMsg},
-};
-pub async fn test_send(simo: Arc<Mutex<OmniSIMO>>) {
-    tokio::spawn(async move {
-        let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
-            from: 1,
-            to: 2,
-            msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
-                key: "testKey".to_string(),
-                value: Vec::from("tempValue"),
-            }]),
-        };
-        let omni_message = OmniMessage::SequencePaxos(paxos_message);
-
-        println!("121");
-        simo.lock().unwrap().send_message(&omni_message);
-        println!("125");
-        simo.lock().unwrap().send_message(&omni_message);
-        simo.lock().unwrap().send_message(&omni_message);
-        simo.lock().unwrap().send_message(&omni_message);
-        println!("127");
-    })
-    .await;
 }
 
 #[cfg(test)]
@@ -148,27 +108,36 @@ mod test {
     };
     use tokio::time::{sleep, Duration};
 
-    async fn test_send(simo: Arc<Mutex<OmniSIMO>>) {
+    async fn test_send(msg: OmniMessage, simo: Arc<Mutex<OmniSIMO>>) {
+        // wait for server starting up
+        sleep(Duration::from_millis(1000)).await;
         tokio::spawn(async move {
-            let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
-                from: 1,
-                to: 2,
-                msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
-                    key: "testKey".to_string(),
-                    value: Vec::from("tempValue"),
-                }]),
-            };
-            let omni_message = OmniMessage::SequencePaxos(paxos_message);
-
-            println!("121");
-            simo.lock().unwrap().send_message(&omni_message);
-            println!("125");
-            simo.lock().unwrap().send_message(&omni_message);
-            simo.lock().unwrap().send_message(&omni_message);
-            simo.lock().unwrap().send_message(&omni_message);
-            println!("127");
+            {
+                let simo = simo.lock().unwrap();
+                simo.send_message(&msg);
+                simo.send_message(&msg);
+                simo.send_message(&msg);
+                simo.send_message(&msg);
+                // println!("124 lock: {:?}", simo.outgoing_buffer.lock());
+            }
+            // println!("125 lock : {:?}", simo.lock());
         })
         .await;
+        // block here
+        tokio::spawn(async { loop {} }).await;
+    }
+
+    async fn test_receive(simo: Arc<Mutex<OmniSIMO>>) {
+        let buf = simo.lock().unwrap().incoming_buffer.clone();
+        loop {
+            {
+                // println!("135 lock: {:?}", buf);
+                if let Some(msg) = buf.lock().unwrap().pop_front() {
+                    println!("receive msg: {:?}", msg);
+                }
+            }
+            sleep(Duration::from_millis(100)).await;
+        }
     }
 
     #[tokio::test]
@@ -179,17 +148,28 @@ mod test {
         let mut omni_simo = OmniSIMO::new("127.0.0.1:5661".to_string(), peers);
         let omni_simo = Arc::new(Mutex::new(omni_simo));
 
-        // send message
+        // message
+        let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
+            from: 1,
+            to: 2,
+            msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
+                key: "testKey".to_string(),
+                value: Vec::from("tempValue"),
+            }]),
+        };
+        let msg = OmniMessage::SequencePaxos(paxos_message);
 
         // start sender and listener
         let omni_simo_copy1 = omni_simo.clone();
         let omni_simo_copy2 = omni_simo.clone();
         let omni_simo_copy3 = omni_simo.clone();
+        let omni_simo_copy4 = omni_simo.clone();
 
         tokio::select! {
             e = OmniSIMO::start_incoming_listener(omni_simo_copy1) => {println!("e: {:?}", e);}
             e = OmniSIMO::start_sender(omni_simo_copy2) => {println!("e: {:?}", e);}
-            _ = test_send(omni_simo_copy3) => {}
+            _ = test_send(msg, omni_simo_copy3) => {}
+            _ = test_receive(omni_simo_copy4) => {}
         }
     }
 
@@ -200,13 +180,28 @@ mod test {
         let mut omni_simo = OmniSIMO::new("127.0.0.1:5660".to_string(), peers);
         let omni_simo = Arc::new(Mutex::new(omni_simo));
 
+        // message
+        let paxos_message: PaxosMessage<LogEntry, Snapshot> = PaxosMessage {
+            from: 2,
+            to: 1,
+            msg: PaxosMsg::ProposalForward(vec![LogEntry::SetValue {
+                key: "testKey".to_string(),
+                value: Vec::from("tempValue"),
+            }]),
+        };
+        let msg = OmniMessage::SequencePaxos(paxos_message);
+
         let omni_simo_copy1 = omni_simo.clone();
         let omni_simo_copy2 = omni_simo.clone();
+        let omni_simo_copy3 = omni_simo.clone();
+        let omni_simo_copy4 = omni_simo.clone();
 
         // start sender and listener
         tokio::select! {
             e = OmniSIMO::start_incoming_listener(omni_simo_copy1) => {println!("e: {:?}", e);}
             e = OmniSIMO::start_sender(omni_simo_copy2) => {println!("e: {:?}", e);}
+            _ = test_send(msg, omni_simo_copy3) => {}
+            _ = test_receive(omni_simo_copy4) => {}
         }
     }
 }

@@ -62,3 +62,5 @@ pub enum MessageEntry {}
 The structure of data transported by network looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230305165825029.png" alt="image-20230305165825029" style="zoom: 50%;" />
+
+### ## A Big Defect With tikio::select!

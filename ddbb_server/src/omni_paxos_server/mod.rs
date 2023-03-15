@@ -20,7 +20,7 @@ pub mod op_connection;
 pub mod op_data_structure;
 
 type OmniPaxosInstance = OmniPaxos<LogEntry, Snapshot, MemoryStorage<LogEntry, ()>>;
-type OmniMessage = Message<LogEntry, Snapshot>;
+pub(crate) type OmniMessage = Message<LogEntry, Snapshot>;
 
 // pub struct OmniPaxosServer {
 //     pub omni_paxos_instance: Arc<Mutex<OmniPaxosInstance>>,
