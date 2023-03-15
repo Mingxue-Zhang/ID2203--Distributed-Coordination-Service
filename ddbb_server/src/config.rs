@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 /// OmniSIMO configs
-pub const RETRIEVE_INTERVAL: u64 = 100;
+pub const RETRIEVE_INTERVAL: u64 = 1;
 
 /// OmniPaxos configs
 pub const BUFFER_SIZE: usize = 10000;

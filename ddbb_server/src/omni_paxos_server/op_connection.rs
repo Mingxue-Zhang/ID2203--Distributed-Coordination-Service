@@ -6,14 +6,14 @@ use tokio::time::{sleep, Duration};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-use omnipaxos_core::util::NodeId;
-use ddbb_libs::data_structure::FrameCast;
 use ddbb_libs::connection::{self, Connection};
+use ddbb_libs::data_structure::FrameCast;
 use ddbb_libs::{Error, Result};
+use omnipaxos_core::util::NodeId;
 
-use crate::config::RETRIEVE_INTERVAL;
 use super::op_data_structure::{LogEntry, OmniMessageEntry, Snapshot};
 use super::OmniMessage;
+use crate::config::RETRIEVE_INTERVAL;
 
 type OmniMessageBuf = Arc<Mutex<VecDeque<OmniMessage>>>;
 
@@ -23,6 +23,7 @@ pub struct OmniSIMO {
     self_addr: String,
     /// #Example: nodeid: 6, addr: "127.0.0.1:25536"
     peers: Arc<Mutex<HashMap<NodeId, String>>>,
+    connections: Arc<Mutex<HashMap<NodeId, Connection>>>,
     pub outgoing_buffer: OmniMessageBuf,
     pub incoming_buffer: OmniMessageBuf,
 }
@@ -32,6 +33,7 @@ impl OmniSIMO {
         OmniSIMO {
             outgoing_buffer: Arc::new(Mutex::new(VecDeque::new())),
             incoming_buffer: Arc::new(Mutex::new(VecDeque::new())),
+            connections: Arc::new(Mutex::new(HashMap::new())),
             self_addr,
             peers: Arc::new(Mutex::new(peers)),
         }
@@ -56,26 +58,56 @@ impl OmniSIMO {
         }
     }
 
-    /// #Descriptions: start the sender of an omni simo
-    pub async fn start_sender(simo: Arc<Mutex<OmniSIMO>>) -> Result<()> {
-        let peers = simo.lock().unwrap().peers.clone();
-        let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
+    async fn process_outgoing_connection(
+        reveiver_id: NodeId,
+        outgoing_buffer: OmniMessageBuf,
+        reveiver_addr: String,
+    ) -> Result<()> {
+        let mut tcp_stream = TcpStream::connect(reveiver_addr).await?;
+        let mut connection = Connection::new(tcp_stream);
         loop {
             {
-                if let Some(outgoing_message) = outgoing_buffer.lock().unwrap().pop_front() {
-                    let receiver = outgoing_message.get_receiver();
-                    if let Some(receive_addr) = peers.lock().unwrap().get(&receiver) {
-                        let mut tcp_stream = TcpStream::connect(receive_addr).await?;
-                        let mut connection = Connection::new(tcp_stream);
-                        let omni_msg_entry = OmniMessageEntry {
-                            omni_msg: outgoing_message,
-                        };
-                        connection.write_frame(&omni_msg_entry.to_frame()).await;
+                let mut can_send = false;
+
+                if let Some(msg) = outgoing_buffer.lock().unwrap().front() {
+                    if msg.get_receiver() == reveiver_id {
+                        can_send = true;
                     }
+                }
+
+                if can_send {
+                    let msg = outgoing_buffer.lock().unwrap().pop_front().unwrap();
+                    let omni_msg_entry = OmniMessageEntry { omni_msg: msg };
+                    connection.write_frame(&omni_msg_entry.to_frame()).await;
                 }
             }
             sleep(Duration::from_millis(RETRIEVE_INTERVAL)).await;
         }
+        Ok(())
+    }
+
+    /// #Descriptions: start the sender of an omni simo
+    pub async fn start_sender(simo: Arc<Mutex<OmniSIMO>>) -> Result<()> {
+        let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
+        let peers = simo.lock().unwrap().peers.clone();
+        let connections = simo.lock().unwrap().connections.clone();
+        let mut connected: Vec<NodeId> = Vec::new();
+
+        for (peer_id, peer_addr) in peers.lock().unwrap().iter() {
+            let outgoing_buffer_copy = outgoing_buffer.clone();
+            let peer_id = peer_id.clone();
+            let peer_addr = peer_addr.clone();
+            tokio::spawn(async move {
+                OmniSIMO::process_outgoing_connection(
+                    peer_id.clone(),
+                    outgoing_buffer_copy,
+                    peer_addr,
+                )
+                .await;
+            });
+        }
+
+        return Ok(());
     }
 
     /// #Descriptions: start the listener of an omni simo
@@ -100,13 +132,15 @@ impl OmniSIMO {
         incoming_buffer: OmniMessageBuf,
         mut connection: Connection,
     ) -> Result<()> {
-        let msg_frame = connection.read_frame().await?.unwrap();
-        let omni_message_entry = *OmniMessageEntry::from_frame(&msg_frame).unwrap();
-        incoming_buffer
-            .lock()
-            .unwrap()
-            .push_back(omni_message_entry.omni_msg);
-
+        loop {
+            if let Ok(Some(msg_frame)) = connection.read_frame().await {
+                let omni_message_entry = *OmniMessageEntry::from_frame(&msg_frame).unwrap();
+                incoming_buffer
+                    .lock()
+                    .unwrap()
+                    .push_back(omni_message_entry.omni_msg);
+            }
+        }
         Ok(())
     }
 }

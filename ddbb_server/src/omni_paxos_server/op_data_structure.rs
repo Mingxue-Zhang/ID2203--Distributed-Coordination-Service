@@ -8,7 +8,7 @@ pub use ddbb_libs::data_structure::LogEntry;
 
 use super::OmniMessage;
 
-use crate::{Error, Result};
+use ddbb_libs::{Error, Result};
 
 pub type Snapshot = ();
 

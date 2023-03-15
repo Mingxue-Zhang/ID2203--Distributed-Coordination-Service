@@ -70,6 +70,7 @@ impl Connection {
                 // shutdown, there should be no data in the read buffer. If
                 // there is, this means that the peer closed the socket while
                 // sending a frame.
+                
                 return if self.buffer.is_empty() {
                     Ok(None)
                 } else {
