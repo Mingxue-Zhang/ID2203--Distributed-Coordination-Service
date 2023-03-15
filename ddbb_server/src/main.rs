@@ -15,13 +15,12 @@ use omnipaxos_core::{
 };
 use omnipaxos_storage::memory_storage::MemoryStorage;
 
-use omni_paxos_server::{op_connection::OmniSIMO, op_data_structure::Snapshot};
-use crate::config::{ELECTION_TIMEOUT, OUTGOING_MESSAGE_PERIOD};
+use crate::config::{ELECTION_TIMEOUT, OUTGOING_MESSAGE_PERIOD, WAIT_DECIDED_TIMEOUT};
 use crate::omni_paxos_server::{OmniPaxosInstance, OmniPaxosServer};
-use op_data_structure::LogEntry;
+use omni_paxos_server::{op_connection::OmniSIMO, op_data_structure::Snapshot};
 use omnipaxos_core::omni_paxos::OmniPaxosConfig;
+use op_data_structure::LogEntry;
 use tokio::time::{sleep, Duration};
-
 
 #[tokio::main]
 async fn main() {
@@ -55,12 +54,13 @@ async fn main() {
         let omni_simo_copy1 = omni_simo.clone();
         let omni_simo_copy2 = omni_simo.clone();
         tokio::spawn(async move {
-            OmniSIMO::start_incoming_listener(omni_simo_copy1).await.unwrap();
+            OmniSIMO::start_incoming_listener(omni_simo_copy1)
+                .await
+                .unwrap();
         });
         tokio::spawn(async move {
             OmniSIMO::start_sender(omni_simo_copy2).await.unwrap();
         });
-
 
         let mut op_server = OmniPaxosServer {
             omni_paxos_instance: omni.clone(),
@@ -68,6 +68,7 @@ async fn main() {
         };
         let join_handle = tokio::spawn({
             async move {
+                sleep(Duration::from_millis(2000)).await;
                 op_server.run().await;
             }
         });
@@ -83,17 +84,25 @@ async fn main() {
         .unwrap()
         .get_current_leader()
         .expect("Failed to get leader");
-    // println!("Elected leader: {}", leader);
+    println!("Elected leader: {}", leader);
 
-    // let follower = node_ids.iter().find(|&&p| p != leader).unwrap();
-    // let (follower_server, _) = op_server_handles.get(follower).unwrap();
+    let follower = node_ids.iter().find(|&&p| p != leader).unwrap();
+    let (follower_server, _) = op_server_handles.get(follower).unwrap();
 
-    // let kv1 = LogEntry::SetValue {
-    //     key: "k1".to_string(),
-    //     value: Vec::from("v1"),
-    // };
+    let kv1 = LogEntry::SetValue {
+        key: "k1".to_string(),
+        value: Vec::from("v1"),
+    };
 
-    // println!("Adding value: {:?} via server {}", kv1, follower);
+    println!("Adding value: {:?} via server {}", kv1, follower);
+    follower_server
+        .lock()
+        .unwrap()
+        .append(kv1)
+        .expect("append failed");
+    sleep(Duration::from_millis(1000)).await;
+
+    std::thread::sleep(WAIT_DECIDED_TIMEOUT);
 }
 
 #[cfg(test)]
