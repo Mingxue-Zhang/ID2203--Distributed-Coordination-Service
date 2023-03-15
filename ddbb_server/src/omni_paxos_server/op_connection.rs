@@ -1,5 +1,3 @@
-use ddbb_libs::data_structure::FrameCast;
-use omnipaxos_core::util::NodeId;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
@@ -8,10 +6,14 @@ use tokio::time::{sleep, Duration};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-use super::op_data_structure::{LogEntry, OmniMessageEntry, Snapshot};
-use super::OmniMessage;
+use omnipaxos_core::util::NodeId;
+use ddbb_libs::data_structure::FrameCast;
 use ddbb_libs::connection::{self, Connection};
 use ddbb_libs::{Error, Result};
+
+use crate::config::RETRIEVE_INTERVAL;
+use super::op_data_structure::{LogEntry, OmniMessageEntry, Snapshot};
+use super::OmniMessage;
 
 type OmniMessageBuf = Arc<Mutex<VecDeque<OmniMessage>>>;
 
@@ -50,8 +52,7 @@ impl OmniSIMO {
                     return Ok(msg);
                 }
             }
-            // @temp: interval
-            sleep(Duration::from_millis(100)).await;
+            sleep(Duration::from_millis(RETRIEVE_INTERVAL)).await;
         }
     }
 
@@ -73,8 +74,7 @@ impl OmniSIMO {
                     }
                 }
             }
-            // @temp: interval of checking send buffer
-            sleep(Duration::from_millis(100)).await;
+            sleep(Duration::from_millis(RETRIEVE_INTERVAL)).await;
         }
     }
 
