@@ -48,7 +48,6 @@ impl OmniSIMO {
         let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
         loop {
             {
-                println!("51");
                 if let Some(outgoing_message) = outgoing_buffer.lock().unwrap().pop_front() {
                     let receiver = outgoing_message.get_receiver();
                     if let Some(receive_addr) = peers.lock().unwrap().get(&receiver) {
@@ -111,27 +110,20 @@ mod test {
     async fn test_send(msg: OmniMessage, simo: Arc<Mutex<OmniSIMO>>) {
         // wait for server starting up
         sleep(Duration::from_millis(1000)).await;
-        tokio::spawn(async move {
+
+        loop {
             {
                 let simo = simo.lock().unwrap();
                 simo.send_message(&msg);
-                simo.send_message(&msg);
-                simo.send_message(&msg);
-                simo.send_message(&msg);
-                // println!("124 lock: {:?}", simo.outgoing_buffer.lock());
             }
-            // println!("125 lock : {:?}", simo.lock());
-        })
-        .await;
-        // block here
-        // tokio::spawn(async { loop {} }).await;
+            sleep(Duration::from_millis(1000)).await;
+        }
     }
 
     async fn test_receive(simo: Arc<Mutex<OmniSIMO>>) {
         let buf = simo.lock().unwrap().incoming_buffer.clone();
         loop {
             {
-                // println!("135 lock: {:?}", buf);
                 if let Some(msg) = buf.lock().unwrap().pop_front() {
                     println!("receive msg: {:?}", msg);
                 }

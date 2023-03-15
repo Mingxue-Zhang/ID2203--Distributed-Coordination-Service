@@ -126,7 +126,7 @@ Which means in this case, the answer about if the program can make progress depe
   ```
 
 
-### ❗Things even worst in `#[tokio::test]`
+### ❗Things even worse in `#[tokio::test]`
 
-There must not be any blocking async task in `#[tokio::test]` function (like the `async_blocking` above) cause `tokio::test` using a single thread model, which means the test program will always be blocking if there is a blocking operation in the code.
+There must not be any blocking async task in `#[tokio::test]` function (like the `async_blocking` above) cause `tokio::test` using a single thread model, which means the `tokio::test` program will always be blocking if there is a blocking operation in the code.
 
