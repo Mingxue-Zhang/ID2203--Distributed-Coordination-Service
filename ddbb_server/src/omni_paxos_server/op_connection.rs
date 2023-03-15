@@ -42,6 +42,19 @@ impl OmniSIMO {
             .push_back(omni_message.clone());
     }
 
+    pub async fn receive_message(simo: Arc<Mutex<OmniSIMO>>) -> Result<OmniMessage> {
+        let buf = simo.lock().unwrap().incoming_buffer.clone();
+        loop {
+            {
+                if let Some(msg) = buf.lock().unwrap().pop_front() {
+                    return Ok(msg);
+                }
+            }
+            // @temp: interval
+            sleep(Duration::from_millis(100)).await;
+        }
+    }
+
     /// #Descriptions: start the sender of an omni simo
     pub async fn start_sender(simo: Arc<Mutex<OmniSIMO>>) -> Result<()> {
         let peers = simo.lock().unwrap().peers.clone();
@@ -121,14 +134,9 @@ mod test {
     }
 
     async fn test_receive(simo: Arc<Mutex<OmniSIMO>>) {
-        let buf = simo.lock().unwrap().incoming_buffer.clone();
         loop {
-            {
-                if let Some(msg) = buf.lock().unwrap().pop_front() {
-                    println!("receive msg: {:?}", msg);
-                }
-            }
-            sleep(Duration::from_millis(100)).await;
+            let msg = OmniSIMO::receive_message(simo.clone()).await.unwrap();
+            println!("receive: {:?}", msg);
         }
     }
 
