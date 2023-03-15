@@ -63,7 +63,7 @@ The structure of data transported by network looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230305165825029.png" alt="image-20230305165825029" style="zoom: 50%;" />
 
-## ## A Big Defect With tikio::select!
+## ### A Big Defect With tikio::select!
 
 ### Description
 
@@ -119,8 +119,8 @@ Which means in this case, the answer about if the program can make progress depe
       let async_task = async { println!("ss"); };
       tokio::select! {
           biased;
+          _ = tokio::spawn(async_blocking) => {} 
           _ = async_task => {}
-          _ = async_blocking => {}
       }
   }
   ```
