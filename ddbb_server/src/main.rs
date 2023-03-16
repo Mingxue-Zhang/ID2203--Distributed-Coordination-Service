@@ -32,11 +32,13 @@ async fn main() {
     // error!("this is printed by default");
     // info!("info temp");
 
-    let mut node_ids: [u64; 3] = [1, 2, 3];
+    let mut node_ids: [u64; 5] = [1, 2, 3,4,5];
     let mut servers: HashMap<NodeId, String> = HashMap::new();
     servers.insert(1, "127.0.0.1:6550".to_string());
     servers.insert(2, "127.0.0.1:6551".to_string());
     servers.insert(3, "127.0.0.1:6552".to_string());
+    servers.insert(4, "127.0.0.1:6553".to_string());
+    servers.insert(5, "127.0.0.1:6554".to_string());
 
     let mut op_server_handles = HashMap::new();
 
@@ -82,7 +84,6 @@ async fn main() {
                     .await
                     .unwrap();
                 OmniSIMO::start_sender(omni_simo_copy2).await.unwrap();
-                sleep(Duration::from_millis(1000)).await;
                 op_server.run().await;
             }
         });

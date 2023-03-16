@@ -129,10 +129,11 @@ impl OmniSIMO {
     pub async fn start_sender(simo: Arc<Mutex<OmniSIMO>>) -> Result<()> {
         let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
         let peers = simo.lock().unwrap().peers.clone();
+        let connected = simo.lock().unwrap().connected.clone();
 
         for (peer_id, peer_addr) in peers.lock().unwrap().iter() {
             let outgoing_buffer_copy = outgoing_buffer.clone();
-            let connected = simo.lock().unwrap().connected.clone();
+            let connected = connected.clone();
             let peer_id = peer_id.clone();
             let peer_addr = peer_addr.clone();
             tokio::spawn(async move {
@@ -146,7 +147,12 @@ impl OmniSIMO {
             });
         }
 
-        return Ok(());
+        loop {
+            if connected.lock().unwrap().len() >= (peers.lock().unwrap().len() + 1 ) / 2 + 1 {
+                return Ok(());
+            }
+            sleep(Duration::from_millis(RECONNECT_INTERVAL)).await;
+        }
     }
 
     /// #Descriptions: start the listener of an omni simo
