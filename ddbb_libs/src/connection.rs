@@ -1,9 +1,11 @@
 use crate::frame::{self, Frame};
+use crate::Result;
 
 use bytes::{Buf, BytesMut};
 use std::io::{self, Cursor};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
+use tokio::time::{sleep, Duration};
 
 /// Send and receive `Frame` values from a remote peer.
 ///
@@ -28,6 +30,9 @@ pub struct Connection {
     buffer: BytesMut,
 }
 
+const RECONNECT_INTERVAL: u64 = 100;
+const RECONNECT_MSG: &str = "##RECONNECT";
+
 impl Connection {
     /// Create a new `Connection`, backed by `socket`. Read and write buffers
     /// are initialized.
@@ -39,6 +44,25 @@ impl Connection {
             // value to their specific use case. There is a high likelihood that
             // a larger read buffer will work better.
             buffer: BytesMut::with_capacity(4 * 1024),
+        }
+    }
+
+    pub fn got_reconnect_msg(frame: &Frame) -> bool {
+        match frame {
+            Frame::Error(e) => e == RECONNECT_MSG,
+            _ => false,
+        }
+    }
+
+    pub async fn reconnect(&mut self, addr: String) -> Result<()> {
+        loop {
+            if let Ok(tcp_stream) = TcpStream::connect(&addr).await {
+                self.stream = BufWriter::new(tcp_stream);
+                self.write_frame(&Frame::Error(RECONNECT_MSG.to_string()))
+                    .await;
+                return Ok(());
+            };
+            sleep(Duration::from_millis(RECONNECT_INTERVAL)).await;
         }
     }
 
@@ -70,12 +94,12 @@ impl Connection {
                 // shutdown, there should be no data in the read buffer. If
                 // there is, this means that the peer closed the socket while
                 // sending a frame.
-                
+
                 return if self.buffer.is_empty() {
-                    Ok(None)
+                    Err("connection closed by peer".into())
                 } else {
-                    Err("connection reset by peer".into())
-                }
+                    Err("peer shutdown with data remain".into())
+                };
             }
         }
     }

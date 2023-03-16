@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
+use log::debug;
 use tokio::{runtime::Builder, sync::mpsc, time};
 
 use omnipaxos_core::{
@@ -29,7 +30,10 @@ impl OmniPaxosServer {
         let messages: Vec<OmniMessage> =
             self.omni_paxos_instance.lock().unwrap().outgoing_messages();
         for msg in messages {
-            self.omni_simo.lock().unwrap().send_message(&msg);
+            {
+                // debug!("SEND: {:?}", msg);
+                self.omni_simo.lock().unwrap().send_message(&msg);
+            }
         }
     }
 
@@ -43,7 +47,7 @@ impl OmniPaxosServer {
                 _ = election_interval.tick() => { self.omni_paxos_instance.lock().unwrap().election_timeout(); },
                 _ = outgoing_interval.tick() => { self.send_outgoing_msgs().await; },
                 Ok(in_msg) = OmniSIMO::receive_message(self.omni_simo.clone()) => {
-                    println!("receive: {:?}", in_msg);
+                    debug!("RECEIVE: {:?}", in_msg);
                     self.omni_paxos_instance.lock().unwrap().handle_incoming(in_msg); },
                 else => { }
             }

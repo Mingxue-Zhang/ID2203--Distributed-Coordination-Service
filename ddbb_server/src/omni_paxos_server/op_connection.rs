@@ -1,3 +1,4 @@
+use log::{debug, error, info};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
@@ -13,7 +14,7 @@ use omnipaxos_core::util::NodeId;
 
 use super::op_data_structure::{LogEntry, OmniMessageEntry, Snapshot};
 use super::OmniMessage;
-use crate::config::RETRIEVE_INTERVAL;
+use crate::config::{RECONNECT_INTERVAL, RETRIEVE_INTERVAL};
 
 type OmniMessageBuf = Arc<Mutex<VecDeque<OmniMessage>>>;
 
@@ -23,7 +24,7 @@ pub struct OmniSIMO {
     self_addr: String,
     /// #Example: nodeid: 6, addr: "127.0.0.1:25536"
     peers: Arc<Mutex<HashMap<NodeId, String>>>,
-    connections: Arc<Mutex<HashMap<NodeId, Connection>>>,
+    pub connected: Arc<Mutex<Vec<NodeId>>>,
     pub outgoing_buffer: OmniMessageBuf,
     pub incoming_buffer: OmniMessageBuf,
 }
@@ -33,7 +34,7 @@ impl OmniSIMO {
         OmniSIMO {
             outgoing_buffer: Arc::new(Mutex::new(VecDeque::new())),
             incoming_buffer: Arc::new(Mutex::new(VecDeque::new())),
-            connections: Arc::new(Mutex::new(HashMap::new())),
+            connected: Arc::new(Mutex::new(Vec::new())),
             self_addr,
             peers: Arc::new(Mutex::new(peers)),
         }
@@ -54,6 +55,7 @@ impl OmniSIMO {
                     return Ok(msg);
                 }
             }
+            // async{let x =1;}.await;
             sleep(Duration::from_millis(RETRIEVE_INTERVAL)).await;
         }
     }
@@ -62,25 +64,62 @@ impl OmniSIMO {
         reveiver_id: NodeId,
         outgoing_buffer: OmniMessageBuf,
         reveiver_addr: String,
+        connected: Arc<Mutex<Vec<NodeId>>>,
     ) -> Result<()> {
-        let mut tcp_stream = TcpStream::connect(reveiver_addr).await?;
+        // let mut tcp_stream = TcpStream::connect(reveiver_addr.clone()).await?;
+        let mut tcp_stream;
+        loop {
+            if let Ok(stream) = TcpStream::connect(reveiver_addr.clone()).await {
+                tcp_stream = stream;
+                break;
+            }
+            sleep(Duration::from_millis(RECONNECT_INTERVAL)).await;
+        }
+        connected.lock().unwrap().insert(0, reveiver_id);
         let mut connection = Connection::new(tcp_stream);
         loop {
             {
                 let mut can_send = false;
+                let mut can_discard = false;
+                {
+                    let mut buf = outgoing_buffer.lock().unwrap();
+                    if let Some(msg) = buf.front() {
+                        // debug!("SEND: {:?}", msg);
+                        // msg to lost receivers, discard it
+                        if !connected.lock().unwrap().contains(&msg.get_receiver()) {
+                            can_discard = true;
+                        } else if msg.get_receiver() == reveiver_id {
+                            // msg to current receiver
+                            can_send = true;
+                        }
+                    }
 
-                if let Some(msg) = outgoing_buffer.lock().unwrap().front() {
-                    if msg.get_receiver() == reveiver_id {
-                        can_send = true;
+                    // discard msg
+                    if can_discard {
+                        let msg = buf.pop_front().unwrap();
+                        info!("DISCARD: {:?}", msg);
                     }
                 }
 
-                if can_send {
-                    let msg = outgoing_buffer.lock().unwrap().pop_front().unwrap();
-                    let omni_msg_entry = OmniMessageEntry { omni_msg: msg };
-                    connection.write_frame(&omni_msg_entry.to_frame()).await;
+                {
+                    // send msg
+                    if can_send {
+                        let msg = outgoing_buffer.lock().unwrap().pop_front().unwrap();
+                        let omni_msg_entry = OmniMessageEntry { omni_msg: msg };
+                        // debug!("SEND: {:?}", omni_msg_entry);
+                        if let Ok(_) = connection.write_frame(&omni_msg_entry.to_frame()).await {
+                        } else {
+                            // RECONNECT
+                            connected.lock().unwrap().retain(|&x| x != reveiver_id);
+                            info!("Send connection lost");
+                            connection.reconnect(reveiver_addr.clone()).await;
+                            info!("RECONNECT");
+                            connected.lock().unwrap().insert(0, reveiver_id);
+                        }
+                    }
                 }
             }
+            // async{let x =1;}.await;
             sleep(Duration::from_millis(RETRIEVE_INTERVAL)).await;
         }
         Ok(())
@@ -90,11 +129,10 @@ impl OmniSIMO {
     pub async fn start_sender(simo: Arc<Mutex<OmniSIMO>>) -> Result<()> {
         let outgoing_buffer = simo.lock().unwrap().outgoing_buffer.clone();
         let peers = simo.lock().unwrap().peers.clone();
-        let connections = simo.lock().unwrap().connections.clone();
-        let mut connected: Vec<NodeId> = Vec::new();
 
         for (peer_id, peer_addr) in peers.lock().unwrap().iter() {
             let outgoing_buffer_copy = outgoing_buffer.clone();
+            let connected = simo.lock().unwrap().connected.clone();
             let peer_id = peer_id.clone();
             let peer_addr = peer_addr.clone();
             tokio::spawn(async move {
@@ -102,6 +140,7 @@ impl OmniSIMO {
                     peer_id.clone(),
                     outgoing_buffer_copy,
                     peer_addr,
+                    connected,
                 )
                 .await;
             });
@@ -116,15 +155,17 @@ impl OmniSIMO {
         let incoming_buffer = simo.lock().unwrap().incoming_buffer.clone();
         let listener = TcpListener::bind(&self_addr).await?;
         // thread of incoming listener
-        loop {
-            let (mut stream, addr) = listener.accept().await.unwrap();
-            let mut connection = Connection::new(stream);
-            let incoming_buffer_copy = incoming_buffer.clone();
-            // thread of new connection
-            tokio::spawn(async move {
-                Self::process_connection(incoming_buffer_copy, connection).await;
-            });
-        }
+        tokio::spawn(async move {
+            loop {
+                let (mut stream, addr) = listener.accept().await.unwrap();
+                let mut connection = Connection::new(stream);
+                let incoming_buffer_copy = incoming_buffer.clone();
+                // thread of new connection
+                tokio::spawn(async move {
+                    Self::process_connection(incoming_buffer_copy, connection).await;
+                });
+            }
+        });
         return Ok(());
     }
 
@@ -139,6 +180,10 @@ impl OmniSIMO {
                     .lock()
                     .unwrap()
                     .push_back(omni_message_entry.omni_msg);
+            } else {
+                // connection droped
+                error!("An Connection drop");
+                break;
             }
         }
         Ok(())

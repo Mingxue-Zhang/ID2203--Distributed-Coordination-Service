@@ -5,6 +5,7 @@ members = [
     "ddbb_libs",
     "examples/connection_sever",
     "examples/connection_client",
+    "examples/temp",
     "omnipaxos_core",
     "omnipaxos_storage",
 ]
