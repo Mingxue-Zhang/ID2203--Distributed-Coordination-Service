@@ -1,0 +1,232 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'ddbb_server'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ddbb_server",
+                    "--package=ddbb_server"
+                ],
+                "filter": {
+                    "name": "ddbb_server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'ddbb_server'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=ddbb_server",
+                    "--package=ddbb_server"
+                ],
+                "filter": {
+                    "name": "ddbb_server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ddbb_libs'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ddbb_libs"
+                ],
+                "filter": {
+                    "name": "ddbb_libs",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'omnipaxos_core'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=omnipaxos_core"
+                ],
+                "filter": {
+                    "name": "omnipaxos_core",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'omnipaxos_storage'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=omnipaxos_storage"
+                ],
+                "filter": {
+                    "name": "omnipaxos_storage",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'ddbb_client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ddbb_client",
+                    "--package=ddbb_client"
+                ],
+                "filter": {
+                    "name": "ddbb_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'ddbb_client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=ddbb_client",
+                    "--package=ddbb_client"
+                ],
+                "filter": {
+                    "name": "ddbb_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'argrments'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=argrments"
+                ],
+                "filter": {
+                    "name": "argrments",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'connection_sever'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=connection_sever",
+                    "--package=connection_sever"
+                ],
+                "filter": {
+                    "name": "connection_sever",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'connection_sever'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=connection_sever",
+                    "--package=connection_sever"
+                ],
+                "filter": {
+                    "name": "connection_sever",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'connection_client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=connection_client",
+                    "--package=connection_client"
+                ],
+                "filter": {
+                    "name": "connection_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'connection_client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=connection_client",
+                    "--package=connection_client"
+                ],
+                "filter": {
+                    "name": "connection_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
