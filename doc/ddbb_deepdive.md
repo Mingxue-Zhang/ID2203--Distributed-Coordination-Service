@@ -82,3 +82,24 @@ enum CommandEntry {
 
 The command will be sent to server and then wait for response, all transferring data are packed into the data structure *Frame*.
 
+<img src="ddbb_deepdive.assets/client.jpg" alt="image-20230305165825029" style="zoom: 70%;" />
+
+#### Message Listening
+
+```Rust
+async fn message_receiver(mut receiver: mpsc::Receiver<(&str, Vec<u8>)>) 
+```
+
+Here we use an asynchronized function *message_receiver* to listen to the response returned by server. The function receives messages through a Rust `mpsc` channel and processes the messages received by decoding them using `bincode`, then performs different actions depending on the type of the message. If the message is a "peers" message, the function updates a count of the number of active nodes. If the message is a "put" or "get" message, the function determines which node should handle the message based on the key in the message, connects to that node using a `TcpStream`, and sends the message. If the message type is not recognized, the function prints an error message.
+
+The function reads bytes stored in receiver buffer and checks which the message type is, which is asynchronized and guarantees ordered data transferring. 
+
+#### Test result
+
+Client
+
+<img src="ddbb_deepdive.assets/client_rsl1.png" alt="image-20230305165825029" style="zoom: 70%;" />
+
+Server
+
+<img src="ddbb_deepdive.assets/client_rsl2.png" alt="image-20230305165825029" style="zoom: 70%;" />
