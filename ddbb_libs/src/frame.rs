@@ -1,5 +1,6 @@
 //! Provides a type representing a Redis protocol frame as well as utilities for
 //! parsing frames from a byte array.
+#![allow(unused)]
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::convert::TryInto;
@@ -113,7 +114,7 @@ impl Frame {
     }
 
     /// deserialize BytesMut to Frame
-    pub fn deserialize(bytes_mut: &BytesMut) -> Result<Frame, &'static str> {
+    pub fn deserialize(bytes_mut: &BytesMut) -> Result<Frame, Error> {
         let mut cur = Cursor::new(&bytes_mut[..]);
         match Frame::check(&mut cur) {
             Ok(_) => {
@@ -122,12 +123,12 @@ impl Frame {
                 return if let Ok(frame) = Frame::parse(&mut cur) {
                     Ok(frame)
                 } else {
-                    Err("Frame parse failed.")
+                    Err("Frame parse failed.".into())
                 }
 
             }
 
-            Err(_) => Err("Frame check failed."),
+            Err(_) => Err("Frame check failed.".into()),
         }
 
     }
