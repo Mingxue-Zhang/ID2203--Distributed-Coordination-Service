@@ -47,7 +47,9 @@ impl OmniPaxosServer {
                 _ = election_interval.tick() => { self.omni_paxos_instance.lock().unwrap().election_timeout(); },
                 _ = outgoing_interval.tick() => { self.send_outgoing_msgs().await; },
                 Ok(in_msg) = OmniSIMO::receive_message(self.omni_simo.clone()) => {
-                    debug!("RECEIVE: {:?}", in_msg);
+                    if let Message::SequencePaxos(msg) = in_msg.clone(){
+                        debug!("RECEIVE: {:?}", msg);
+                    };
                     self.omni_paxos_instance.lock().unwrap().handle_incoming(in_msg); },
                 else => { }
             }

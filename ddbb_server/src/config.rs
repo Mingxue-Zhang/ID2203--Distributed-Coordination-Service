@@ -4,6 +4,8 @@ use std::time::Duration;
 pub const RETRIEVE_INTERVAL: u64 = 1;
 pub const RECONNECT_INTERVAL: u64 = 200;
 
+/// DDBB configs
+pub const LOG_RETRIEVE_INTERVAL: u64 = 20;
 
 /// OmniPaxos configs
 pub const BUFFER_SIZE: usize = 10000;
