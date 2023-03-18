@@ -270,6 +270,69 @@ impl OmniPaxosServer {
 
 > Code: ddbb_server/src/ddbb_server.rs
 
+### Basic operation
+
+#### Set and Get
+
+Basic `set` and `get` operation supply **Sequential Consistency**. Which were implemented by `WRITE MAJORITY READ LOCAL` algorithm.
+
+```rust
+ddbb.set("key", Vec::from([1])).unwrap();
+ddbb.get("key")
+```
+
+#### LinWrite and LinRead
+
+These two operations supply **Linearizability**, which were implemented by `WRITE MAJORITY READ MAJORITY` algorithm. The DDBB uses `(NodeIpAddr, Timestamp)` to identify each operation:
+
+```rust
+pub enum LogEntry {
+    LINRead {
+        opid: (String, u64),
+		// code ...
+    },
+    LINWrite {
+        opid: (String, u64),
+		// code ...
+    },
+}
+```
+
+The log of `LinRead` operation will also be stored in the `WALStore` with the value of this operation (same as `LinWrite`) to guarantee linearzability, like this:
+
+```shell
+LINWrite { opid: ("127.0.0.1:6550", 2), key: "key1", value: [1, 2] }
+LINWrite { opid: ("127.0.0.1:6552", 1), key: "key2", value: [2, 2] }
+```
+
+The operation handler will periodically retrieve log from `WALStore` until got the value of operation times out:
+
+```rust
+async fn lin_read(key: String) -> Result<Vec<u8>>{
+    // code...
+    loop {
+        {
+            if let Some(log) = ddbb.find_log_by_opid(self_addr.clone(), ts) {
+                    return Ok(value);
+            };
+        }
+        // code...
+        
+        // operation timesout
+        if times >= LIN_WRITE_TIMES_OUT {
+            return Err("Lin read failed".into());
+        }
+        sleep(LOG_RETRIEVE_INTERVAL).await;
+    }
+}
+```
+
+
+
+The workflow of `LinRead` looks like this:
+
+<img src="ddbb_deepdive.assets/image-20230318182055078.png" alt="image-20230318182055078" style="zoom:67%;" />
+
 
 
 ## ### A Big Defect With tikio::select!
