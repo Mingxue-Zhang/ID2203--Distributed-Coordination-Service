@@ -22,7 +22,7 @@
 
 ### Functions
 
-- Stable and high-performance connection layer implementation for OmniPaxos.
+- Stable and high-performance connection layer implementation for OmniPaxos, which is using failure-recovery model.
 - Linearizable read and write, sequential read and write, delete operations on a KV store.
 - Crash recovery when majority connected.
 - Tolerates and recovers from partial connectivity.
