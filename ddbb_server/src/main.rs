@@ -7,7 +7,9 @@ use log::{debug, error, info, log_enabled, Level};
 use std::collections::HashMap;
 use std::env::set_var;
 use std::sync::{Arc, Mutex};
-
+use std::time::Duration;
+use rand::Rng;
+use rand::distributions::{Distribution, Standard};
 // @temp
 
 use omni_paxos_server::op_data_structure;
@@ -24,6 +26,18 @@ use omni_paxos_server::{op_connection::OmniSIMO, op_data_structure::Snapshot};
 use omnipaxos_core::omni_paxos::OmniPaxosConfig;
 use op_data_structure::LogEntry;
 use tokio::time::{sleep, Duration};
+
+#[derive(Debug)]
+struct KV {
+    key: i32, value: u8
+}
+
+impl Distribution<KV> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> KV {
+        let (rand_key, rand_value) = rng.gen();
+        KV { key: rand_key, value: rand_value }
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -67,42 +81,143 @@ async fn main() {
 
         ddbbs.insert(ddbbs.len(), ddbb);
     }
+    let start = Instant::now();
+    let mut rng = rand::thread_rng();
+    let mut count:i32 = 0;
 
-    sleep(Duration::from_millis(1000)).await;
+    let ddbb1 = ddbbs.get(0).unwrap().clone();
+  //  let ddbb2 = ddbbs.get(1).unwrap().clone();
+  //  let ddbb3 = ddbbs.get(2).unwrap().clone();
+  //  let ddbb4 = ddbbs.get(3).unwrap().clone();
+  //  let ddbb5 = ddbbs.get(4).unwrap().clone();
+    let mut test_data = HashMap::new();
+    while count <  10000 {
+        let rand_data:KV = rng.gen();
+        //println!("Random KV: {:?}", rand_data);
+        //println!("{:?}", rand_data.key.to_string());
+        count+=1;
+        test_data.insert(rand_data.key.to_string(), rand_data.value);
+        //let mut node_id:u64 = rng.clone().gen_range(0..2);
+        //ddbbs.get(0).unwrap().lock().unwrap().set(rand_data.key.to_string(), Vec::from([rand_data.value])).unwrap();
+        DDBB::lin_write(ddbb1.clone(), rand_data.key.to_string(),Vec::from([rand_data.value])).await;
+        sleep(Duration::from_millis(5)).await;
+    }
+    let duration = start.elapsed();
+    println!("Time elapsed in inserting data is: {:?}", duration);
+    println!("finish put");
+    let start_read = Instant::now();
+    for (key, &value) in test_data.iter() {
+        //println!("read {}: {}", key, value);
+        //ddbb1.lock().unwrap().show_wal_store();
 
-    let ddbb1 = ddbbs.get(0).unwrap();
-    let ddbb2 = ddbbs.get(1).unwrap();
-    let ddbb3 = ddbbs.get(2).unwrap();
+        //seq
+        //ddbb1.lock().unwrap().get(key.to_string());
+        //info!("read key == key4 from ddbb2: {:?}", ddbb1.lock().unwrap().get(key.to_string()));
 
-    ddbb1.lock().unwrap().set("key1".to_string(), Vec::from([1])).unwrap();
-    ddbb2.lock().unwrap().set("key2".to_string(), Vec::from([2])).unwrap();
-    ddbb1.lock().unwrap().set("key2".to_string(), Vec::from([2,1])).unwrap();
-    ddbb3.lock().unwrap().set("key1".to_string(), Vec::from([1,1])).unwrap();
-    ddbb1.lock().unwrap().set("key3".to_string(), Vec::from([3])).unwrap();
-    DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3,1])).await;
-    DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2,2])).await;
-    DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1,2])).await;
+        //lin
+        info!("lin read key from ddbb1: {:?}", DDBB::lin_read(ddbb1.clone(), key.to_string()).await);
+    }
+    let duration_read = start_read.elapsed();
+    println!("Time elapsed in reading data is: {:?}", duration_read);
+
+    // let start = Instant::now();
+    // let mut rng = rand::thread_rng();
+    // let mut count:i32 = 0;
+    // let ddbb2 = ddbbs.get(2).unwrap().clone();
+    // while count <  10000 {
+    //     tokio::spawn(async move {
+    //         let rand_data0:KV = rng.gen();
+    //         DDBB::lin_write(ddbb1.clone(), rand_data0.key.to_string(),Vec::from([rand_data0.value])).await;
+    //         count+=1;
+    //     }); 
+    //     tokio::spawn(async move {
+    //         let rand_data1:KV = rng.gen();
+    //         DDBB::lin_write(ddbb1.clone(), rand_data1.key.to_string(),Vec::from([rand_data1.value])).await;
+    //         count+=1;
+    //     }); 
+    //     tokio::spawn(async move {
+    //         let rand_data2:KV = rng.gen();
+    //         DDBB::lin_write(ddbb1.clone(), rand_data2.key.to_string(),Vec::from([rand_data2.value])).await;
+    //         count+=1;
+    //     }); 
+    //     tokio::spawn(async move {
+    //         let rand_data3:KV = rng.gen();
+    //         DDBB::lin_write(ddbb1.clone(), rand_data3.key.to_string(),Vec::from([rand_data3.value])).await;
+    //         count+=1;
+    //     }); 
+    //     tokio::spawn(async move {
+    //         let rand_data4:KV = rng.gen();
+    //         DDBB::lin_write(ddbb1.clone(), rand_data4.key.to_string(),Vec::from([rand_data4.value])).await;
+    //         count+=1;
+    //     }); 
+        
+        //println!("Random KV: {:?}", rand_data);
+        //println!("{:?}", rand_data.key.to_string());
+        
+        // let mut node_id:u64 = rng.clone().gen_range(0..2);
+        // ddbb2.lock().unwrap().set("key3".to_string(), Vec::from([3])).unwrap();
+        
+        // ddbbs.get(0).unwrap().lock().unwrap().set(rand_data.key.to_string(), Vec::from([rand_data.value])).unwrap();
+        
+        sleep(Duration::from_millis(10)).await;
+    }
+    let duration = start.elapsed();
+    println!("Time elapsed in expensive_function() is: {:?}", duration);
+    println!("finish");
+    
+    
+    
+    //Single
+    let start_read = Instant::now();
+    for (key, &value) in test_data.iter() {
+        //println!("read {}: {}", key, value);
+        //ddbb1.lock().unwrap().show_wal_store();
+        // seq read
+        info!("read key == key4 from ddbb2: {:?}", ddbb2.lock().unwrap().get("key3".to_string()));
+        // lin read
+        info!(
+        "lin read key from ddbb1: {:?}",
+        DDBB::lin_read(ddbb1.clone(), key.to_string()).await
+        );
+    }
+    let duration_read = start_read.elapsed();
+    println!("Time elapsed in reading data is: {:?}", duration_read);
+
+    // sleep(Duration::from_millis(1000)).await;
+
+    // let ddbb1 = ddbbs.get(0).unwrap();
+    // let ddbb2 = ddbbs.get(1).unwrap();
+    // let ddbb3 = ddbbs.get(2).unwrap();
+
+    // ddbb1.lock().unwrap().set("key1".to_string(), Vec::from([1])).unwrap();
+    // ddbb2.lock().unwrap().set("key2".to_string(), Vec::from([2])).unwrap();
+    // ddbb1.lock().unwrap().set("key2".to_string(), Vec::from([2,1])).unwrap();
+    // ddbb3.lock().unwrap().set("key1".to_string(), Vec::from([1,1])).unwrap();
+    // ddbb1.lock().unwrap().set("key3".to_string(), Vec::from([3])).unwrap();
+    // DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3,1])).await;
+    // DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2,2])).await;
+    // DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1,2])).await;
 
 
 
     
-    sleep(Duration::from_millis(1000)).await;
-    ddbb1.lock().unwrap().show_wal_store();
-    ddbb2.lock().unwrap().show_wal_store();
-    ddbb3.lock().unwrap().show_wal_store();
+    // sleep(Duration::from_millis(1000)).await;
+    // ddbb1.lock().unwrap().show_wal_store();
+    // ddbb2.lock().unwrap().show_wal_store();
+    // ddbb3.lock().unwrap().show_wal_store();
 
-    info!(
-        "lin read key == key3 from ddbb2: {:?}",
-        DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await
-    );
-    info!(
-        "read key == key1 from ddbb2: {:?}",
-        ddbb2.lock().unwrap().get("key1".to_string())
-    );
-    info!(
-        "lin read key == key4 from ddbb2: {:?}",
-        DDBB::lin_read(ddbb1.clone(), "key4".to_string()).await
-    );
+    // info!(
+    //     "lin read key == key3 from ddbb2: {:?}",
+    //     DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await
+    // );
+    // info!(
+    //     "read key == key1 from ddbb2: {:?}",
+    //     ddbb2.lock().unwrap().get("key1".to_string())
+    // );
+    // info!(
+    //     "lin read key == key4 from ddbb2: {:?}",
+    //     DDBB::lin_read(ddbb1.clone(), "key4".to_string()).await
+    // );
 }
 
 // #[tokio::main]
