@@ -59,7 +59,7 @@ async fn main() {
         let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
         let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
         let ddbb = Arc::new(Mutex::new(ddbb));
-        
+
         let ddbb_copy = ddbb.clone();
         let omni_server_handler = tokio::spawn(async move {
             DDBB::start(ddbb_copy).await.unwrap();
@@ -70,15 +70,39 @@ async fn main() {
 
     sleep(Duration::from_millis(1000)).await;
 
-    ddbbs.get(0).unwrap().lock().unwrap().set("key1".to_string(), Vec::from([1])).unwrap();
-    ddbbs.get(1).unwrap().lock().unwrap().set("key2".to_string(), Vec::from([2])).unwrap();
-    ddbbs.get(2).unwrap().lock().unwrap().set("key3".to_string(), Vec::from([3])).unwrap();
+    let ddbb1 = ddbbs.get(0).unwrap();
+    let ddbb2 = ddbbs.get(1).unwrap();
+    let ddbb3 = ddbbs.get(2).unwrap();
+
+    ddbb1.lock().unwrap().set("key1".to_string(), Vec::from([1])).unwrap();
+    ddbb2.lock().unwrap().set("key2".to_string(), Vec::from([2])).unwrap();
+    ddbb1.lock().unwrap().set("key2".to_string(), Vec::from([2,1])).unwrap();
+    ddbb3.lock().unwrap().set("key1".to_string(), Vec::from([1,1])).unwrap();
+    ddbb1.lock().unwrap().set("key3".to_string(), Vec::from([3])).unwrap();
+    DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3,1])).await;
+    DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2,2])).await;
+    DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1,2])).await;
+
+
+
+    
     sleep(Duration::from_millis(1000)).await;
-    let ddbb2 = ddbbs.get(2).unwrap().clone();
+    ddbb1.lock().unwrap().show_wal_store();
     ddbb2.lock().unwrap().show_wal_store();
-    info!("read key == key4 from ddbb2: {:?}", ddbb2.lock().unwrap().get("key3".to_string()));
+    ddbb3.lock().unwrap().show_wal_store();
 
-
+    info!(
+        "lin read key == key3 from ddbb2: {:?}",
+        DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await
+    );
+    info!(
+        "read key == key1 from ddbb2: {:?}",
+        ddbb2.lock().unwrap().get("key1".to_string())
+    );
+    info!(
+        "lin read key == key4 from ddbb2: {:?}",
+        DDBB::lin_read(ddbb1.clone(), "key4".to_string()).await
+    );
 }
 
 // #[tokio::main]

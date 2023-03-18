@@ -19,19 +19,27 @@ pub enum DataEntry {
 /// For omni-paxos.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LogEntry {
-    SetValue { key: String, value: Vec<u8> },
+    SetValue {
+        key: String,
+        value: Vec<u8>,
+    },
+    LINRead {
+        opid: (String, u64),
+        key: String,
+        value: Option<Vec<u8>>,
+    },
+    LINWrite {
+        opid: (String, u64),
+        key: String,
+        value: Vec<u8>,
+    },
 }
 
 /// For ddbb_client and ddbb_sever.
 #[derive(Clone, Debug)]
 pub enum CommandEntry {
-    SetValue {
-        key: String,
-        value: Bytes,
-    },
-    GetValue {
-        key: String,
-    },
+    SetValue { key: String, value: Bytes },
+    GetValue { key: String },
     Empty,
 }
 
@@ -125,29 +133,26 @@ impl FrameCast for DataEntry {
 
 impl FrameCast for LogEntry {
     fn to_frame(&self) -> Frame {
-        return match self {
-            /// LogEntry::SetValue
-            LogEntry::SetValue { key, value } => {
-                Frame::Array(vec![
-                    // begin tag
-                    Frame::Simple("LogEntry::SetValue".to_string()),
-                    Frame::Simple(key.to_string()),
-                    Frame::Bulk(Bytes::from(value.clone())),
-                ])
-            }
-        };
+        Frame::Array(vec![
+            // begin tag
+            Frame::Simple("LogEntry".to_string()),
+            Frame::Bulk(serde_json::to_vec(&self).unwrap().into()),
+        ])
     }
 
     fn from_frame(frame: &Frame) -> Result<Box<LogEntry>, Error> {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
-                /// LogEntry::SetValue
-                [begin_tag, key, value] if *begin_tag == "LogEntry::SetValue" => {
-                    Ok(Box::new(LogEntry::SetValue {
-                        key: key.to_string(),
-                        value: Vec::from(value.to_string()),
-                    }))
+                /// MessageEntry::Success
+                [begin_tag, msg] if *begin_tag == "LogEntry" => {
+                    if let Frame::Bulk(serialized_msg) = msg {
+                        let result: LogEntry = serde_json::from_slice(&serialized_msg).unwrap();
+                        Ok(Box::new(result))
+                    } else {
+                        Err(frame.to_error()).into()
+                    }
                 }
+
                 _ => Err(frame.to_error()).into(),
             },
 
@@ -178,20 +183,19 @@ impl FrameCast for CommandEntry {
                     Frame::Simple(key.to_string()),
                 ])
             }
-            CommandEntry::Empty=>{
-                Frame::Array(vec![])
-            }
+            CommandEntry::Empty => Frame::Array(vec![]),
         };
     }
 
     fn from_frame(frame: &Frame) -> Result<Box<Self>, Error> {
         match frame {
             Frame::Array(ref frame_vec) => match frame_vec.as_slice() {
-
                 /// CommandEntry::GetValue
-                [begin_tag, key, value] if *begin_tag == "CommandEntry::GetValue" => Ok(Box::new(CommandEntry::GetValue {
-                    key: key.to_string(),
-                })),
+                [begin_tag, key, value] if *begin_tag == "CommandEntry::GetValue" => {
+                    Ok(Box::new(CommandEntry::GetValue {
+                        key: key.to_string(),
+                    }))
+                }
 
                 /// CommandEntry::SetValue
                 [begin_tag, key, value] if *begin_tag == "CommandEntry::SetValue" => {
@@ -221,7 +225,10 @@ mod tests {
 
     #[test]
     fn test_log_entry() {
-        let log = LogEntry::SetValue { key: "testKey".to_string(), value: Vec::from("tempValue") };
+        let log = LogEntry::SetValue {
+            key: "testKey".to_string(),
+            value: Vec::from("tempValue"),
+        };
         println!("log: {:?}", log);
         let frame = log.to_frame();
         let de_frame = LogEntry::from_frame(&frame).unwrap();

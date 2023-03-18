@@ -591,6 +591,7 @@ dependencies = [
  "atoi 0.3.3",
  "bytes",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-stream",
 ]

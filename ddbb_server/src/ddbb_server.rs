@@ -1,24 +1,27 @@
 use log::{debug, info};
 use omnipaxos_core::{omni_paxos::OmniPaxos, util::LogEntry as OmniLogEntry, util::NodeId};
+use serde_json::Map;
 use tokio::time::{sleep, Duration};
 
 use std::{
+    clone,
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 
-use ddbb_libs::{Error, Result};
-
-use crate::config::LOG_RETRIEVE_INTERVAL;
+use crate::config::{LIN_WRITE_TIMES_OUT, LOG_RETRIEVE_INTERVAL, WAIT_DECIDED_TIMEOUT};
 use crate::omni_paxos_server::{op_connection::OmniSIMO, OmniPaxosInstance, OmniPaxosServer};
 use crate::op_data_structure::LogEntry;
+use ddbb_libs::{Error, Result};
 
 pub struct DDBB {
     node_info: NodeInfo,
     wal_store: WALStore,
+    kv_store: KVStore,
     peers: Arc<Mutex<HashMap<NodeId, String>>>,
     simo: Arc<Mutex<OmniSIMO>>,
     omni: Arc<Mutex<OmniPaxosInstance>>,
+    timestamp: u64,
 }
 
 #[derive(Debug)]
@@ -51,6 +54,27 @@ impl WALStore {
     }
 }
 
+#[derive(Debug)]
+struct KVStore {
+    store: HashMap<String, Vec<u8>>,
+}
+
+impl KVStore {
+    pub fn new() -> Self {
+        Self {
+            store: HashMap::new(),
+        }
+    }
+
+    pub fn put(&mut self, key: String, value: Vec<u8>) {
+        self.store.insert(key, value);
+    }
+
+    pub fn get(&self, key: String) -> Option<&Vec<u8>> {
+        self.store.get(&key)
+    }
+}
+
 impl DDBB {
     pub fn new(
         id: NodeId,
@@ -71,6 +95,8 @@ impl DDBB {
             simo,
             omni,
             wal_store: WALStore::new(),
+            kv_store: KVStore::new(),
+            timestamp: 0,
         }
     }
 
@@ -107,29 +133,116 @@ impl DDBB {
         return Ok(());
     }
 
-    pub fn set(&self, key: String, value: Vec<u8>) -> Result<()> {
-        let log = LogEntry::SetValue { key, value };
-        self.put_log_into_omni(log)
+    pub fn add_ts(&mut self) {
+        self.timestamp += 1;
     }
 
-    pub fn get(&self, key: String) -> Option<Vec<u8>> {
-        let key_in = key;
-        for log in self.wal_store.store.iter(){
-            if let LogEntry::SetValue { key, value } = log{
-                if key_in.eq(key){
-                    return Some(value.clone());
-                }
+    pub fn find_log_by_opid(&self, addr: String, ts: u64) -> Option<LogEntry> {
+        let mut opid_temp: (String, u64);
+        let mut ts_temp: u64;
+        for log in self.wal_store.store.iter() {
+            match log.clone() {
+                LogEntry::SetValue { key, value } => break,
+                LogEntry::LINRead { opid, key, value } => opid_temp = opid,
+                LogEntry::LINWrite { opid, key, value } => opid_temp = opid,
+            };
+            if opid_temp.0.eq(&addr) && opid_temp.1 == ts {
+                return Some(log.clone());
             }
         }
         return None;
     }
 
-    // temp
-    pub fn show_wal_store (&self){
+    pub fn set(&mut self, key: String, value: Vec<u8>) -> Result<()> {
+        self.kv_store.store.insert(key.clone(), value.clone());
+        let log = LogEntry::SetValue { key, value };
+        self.put_log_into_omni(log)
+    }
+
+    pub fn get(&self, key: String) -> Option<Vec<u8>> {
+        if let Some(value) = self.kv_store.get(key) {
+            return Some(value.clone());
+        } else {
+            return None;
+        }
+    }
+
+    pub async fn lin_write(ddbb: Arc<Mutex<DDBB>>, key: String, value: Vec<u8>) -> Result<()> {
+        let ts: u64;
+        let self_addr: String;
+        {
+            let mut ddbb = ddbb.lock().unwrap();
+            ddbb.add_ts();
+            ts = ddbb.timestamp;
+            self_addr = ddbb.node_info.addr.clone()
+        }
+
+        let log = LogEntry::LINWrite {
+            opid: (self_addr.clone(), ts),
+            key,
+            value,
+        };
+        ddbb.lock().unwrap().put_log_into_omni(log.clone());
+        sleep(WAIT_DECIDED_TIMEOUT).await;
+        let mut times: u64 = 0;
+        loop {
+            if let Some(_) = ddbb.lock().unwrap().find_log_by_opid(self_addr.clone(), ts) {
+                // debug!("tried times: {:?}", times);
+                return Ok(());
+            };
+            times += 1;
+            if times >= LIN_WRITE_TIMES_OUT {
+                return Err("Lin write failed".into());
+            }
+
+            sleep(Duration::from_millis(LOG_RETRIEVE_INTERVAL)).await;
+        }
+    }
+
+    pub async fn lin_read(ddbb: Arc<Mutex<DDBB>>, key: String) -> Result<Option<Vec<u8>>> {
+        let ts: u64;
+        let self_addr: String;
+        {
+            let mut ddbb = ddbb.lock().unwrap();
+            ddbb.add_ts();
+            ts = ddbb.timestamp;
+            self_addr = ddbb.node_info.addr.clone()
+        }
+
+        let log = LogEntry::LINRead {
+            opid: (self_addr.clone(), ts),
+            key,
+            value: None,
+        };
+        ddbb.lock().unwrap().put_log_into_omni(log.clone());
+        sleep(WAIT_DECIDED_TIMEOUT).await;
+        let mut times: u64 = 0;
+        loop {
+            {
+                let ddbb = ddbb.lock().unwrap();
+                if let Some(log) = ddbb.find_log_by_opid(self_addr.clone(), ts) {
+                    // debug!("tried times: {:?}", times);
+                    if let LogEntry::LINRead { opid, key, value } = log {
+                        return Ok(value);
+                    }
+                };
+            }
+            times += 1;
+            if times >= LIN_WRITE_TIMES_OUT {
+                return Err("Lin read failed".into());
+            }
+
+            sleep(Duration::from_millis(LOG_RETRIEVE_INTERVAL)).await;
+        }
+    }
+
+    // temp: for debug
+    pub fn show_wal_store(&self) {
         info!("Wal of {:?}:", self.node_info.id);
-        for log in self.wal_store.store.iter(){
+        for log in self.wal_store.store.iter() {
             info!("\t{:?}", log);
         }
+        info!("\tkv store: {:?}", self.kv_store);
     }
 
     fn retrieve_logs_from_omni(&mut self) {
@@ -141,9 +254,21 @@ impl DDBB {
         if let Some(entrys) = committed_ents {
             for entry in entrys {
                 match entry {
-                    OmniLogEntry::Decided(log) => {
-                        self.wal_store.append(log);
-                    }
+                    OmniLogEntry::Decided(log) => match log.clone() {
+                        LogEntry::SetValue { key, value } => {
+                            self.wal_store.append(log.clone());
+                            self.kv_store.store.insert(key.clone(), value.clone());
+                        }
+                        LogEntry::LINRead { key, opid, value } => {
+                            let value = self.get(key.clone());
+                            self.wal_store
+                                .append(LogEntry::LINRead { opid, key, value });
+                        }
+                        LogEntry::LINWrite { opid, key, value } => {
+                            self.kv_store.store.insert(key, value);
+                            self.wal_store.append(log.clone());
+                        }
+                    },
                     _ => {}
                 }
             }
