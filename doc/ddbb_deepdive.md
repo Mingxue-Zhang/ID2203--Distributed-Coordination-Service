@@ -1,22 +1,62 @@
-# The deep dive of DDBB
+# DDBB
 
-> A distributed key-value store inspired by etcd
+> A distributed key-value store inspired by etcd.
+>
+> [Git Hub Link](https://github.com/Mingxue-Zhang/ID2203--Distributed-Coordination-Service)
 
-## System architecture
+## Intro
+
+### Project group info
+
+| Name          | Email           |
+| ------------- | --------------- |
+| Xinlong Han   | xinlong@kth.se  |
+| Mingxue Zhang | mingxue@kth.se  |
+| Zhengjin Wang | zhengjin@kth.se |
+
+
+
+## System overview
+
+> Below are all the information that you need to overally evaluate this project :)
+
+### Functions
+
+- Stable and high-performance connection layer implementation for OmniPaxos.
+- Linearizable read and write, sequential read and write, delete operations on a KV store.
+- Crash recovery when majority connected.
+- Tolerates and recovers from partial connectivity.
+- Snapshots and compacts.
+
+### Testing
+
+- Completed unit testing for all the components.
+- Parallel operation input testing and global trace analyses for linearizability.
+- Randomly nodes down and recover testing for crash recovery.
+- Randomly connection cut off and consistency analyses for partial connectivity tolerance.
+- Benchmark testing and etcd comparation
+
+
+
+## Design and implementation
+
+### System architecture
 
 ![image-20230318122125327](ddbb_deepdive.assets/image-20230318122125327.png)
 
-## Connection layer: OmniSIMO
+
+
+### Connection layer: OmniSIMO
 
 >Omni Simo: a single incoming and multiple outgoing connection module for OmniPaxos instances' communication. 
 >
 >Which is the most important part of our project. 
 
-### Architecture
+#### Architecture
 
 <img src="ddbb_deepdive.assets/image-20230318104216604.png" alt="image-20230318104216604" style="zoom:50%;" />
 
-### Data frame
+#### Data frame
 
 > Code: ddbb_libs/src/frame.rs
 
@@ -35,7 +75,7 @@ enum Frame {
 }
 ```
 
-#### Bytes to Frame 
+##### Bytes to Frame 
 
 `ddbb` use a series of encodeing tags to cast bytes into `frame` which are similar to the protocol used by `redis`, to see details: [RESP protocol spec | Redis](https://redis.io/docs/reference/protocol-spec/)
 
@@ -45,19 +85,19 @@ APIs supplied by:
 - `Frame::parse()`
 - `Frame::deserialize(byets: Bytes) -> Frame`
 
-#### Frame to Bytes
+##### Frame to Bytes
 
 APIs supplied by:
 
 - `Frame::serialize() -> Bytes`
 
-### Connection
+#### Connection
 
 > Code: ddbb_libs/src/frame.rs
 
 The `Connection` model is to build an one2one network connection between two nodes. Based on `tokio::net::TcpStream`.
 
-#### Interface
+##### Interface
 
 - **Init**
 
@@ -80,7 +120,7 @@ The `Connection` model is to build an one2one network connection between two nod
   fn write_frame(frame: &Frame) -> Result<()> {}
   ```
 
-#### Reconnect
+##### Reconnect
 
 One of the good aspects of `Connection` is that it supply failure recovery with `reconnect` function:
 
@@ -104,7 +144,7 @@ const RECONNECT_MSG: &str = "##RECONNECT";
 let reconn_msg = Frame::Error(RECONNECT_MSG);
 ```
 
-### Data structure of DDBB
+#### Data structure of DDBB
 
 > Code: ddbb_libs/src/data_structure.rs 
 
@@ -140,7 +180,7 @@ impl FrameCast for MessageEntry{
 }
 ```
 
-### Data transmission
+#### Data transmission
 
 `ddbb` uses `tokio::net::TcpStream` to build network connection, but can be replaced by any interface of bytes stream.
 
@@ -148,13 +188,13 @@ The structure of data transported by network looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230318100648766.png" alt="image-20230318100648766" style="zoom: 67%;" />
 
-### OmniSimo
+#### OmniSimo
 
 > Code: ddbb_server/src/omni_paxos_server/op_connection.rs
 
 The single incoming and multiple outgoing group communication connection model for OmniPaxos instances' communication.
 
-#### Interface
+##### Interface
 
 OmniSimo expose two interface:
 
@@ -166,7 +206,7 @@ pub async fn receive_message(simo: Arc<Mutex<OmniSIMO>>) -> Result<OmniMessage> 
 
 The reason why `send_message` is a sync funtcion but `receive_message` is not is that the `send_message` only writes msg into buffer, so there is no needs for it to be async.
 
-#### Start up
+##### Start up
 
 When `OmniSimo` starts up, it will wait for a **quorum** to be connected to make sure of that `OmniPaxos` can start up safely.
 
@@ -176,7 +216,7 @@ if connected.len() >= (peers.len() + 1 ) / 2 + 1 {
 }
 ```
 
-#### Msg buffer
+##### Msg buffer
 
 OmniSimo uses two buffer to caching incoming and outgoing messages.
 
@@ -202,7 +242,7 @@ loop {
 }
 ```
 
-#### Group membership management
+##### Group membership management
 
 Infomation of the communication group membership is defined during the init phase of `OmniSIMO`:
 
@@ -233,7 +273,7 @@ if let Some(msg) = buf.front() {
 // code..
 ```
 
-#### Failure recovery
+##### Failure recovery
 
 When connection lost or peer down, OmniSIMO will start corresponding `reconnect` process
 
@@ -246,7 +286,9 @@ connection.reconnect(reveiver_addr).await;
 connected.insert(0, reveiver_id);
 ```
 
-## OmniPaxos server
+
+
+### OmniPaxos server
 
 Similar structure with the OmniPaxos in `omnipaxos/examples/kv_store`:
 
@@ -266,13 +308,15 @@ impl OmniPaxosServer {
 }
 ```
 
-## DDBB core
+
+
+### DDBB core
 
 > Code: ddbb_server/src/ddbb_server.rs
 
-### Local storage
+#### Local storage
 
-#### WAL Store
+##### WAL Store
 
 The WAL (write ahead log) store is to store all log entries decided by the `OmniPaxos`.
 
@@ -283,7 +327,7 @@ struct WALStore {
 }
 ```
 
-#### KVStore
+##### KVStore
 
 The this is the storage of K-V entries, which is built by filtering the logs in the `WALSore`.
 
@@ -293,9 +337,9 @@ struct KVStore {
 }
 ```
 
-### Basic operation
+#### Basic operation
 
-#### Set and Get
+##### Set and Get
 
 Basic `set` and `get` operation supply **Sequential Consistency**. Which were implemented by `WRITE MAJORITY READ LOCAL` algorithm.
 
@@ -304,7 +348,7 @@ ddbb.set("key", Vec::from([1])).unwrap();
 ddbb.get("key")
 ```
 
-#### LinWrite and LinRead
+##### LinWrite and LinRead
 
 These two operations supply **Linearizability**, which were implemented by `WRITE MAJORITY READ MAJORITY` algorithm. The DDBB uses `(NodeIpAddr, Timestamp)` to identify each operation:
 
@@ -356,9 +400,42 @@ The whole workflow of `LinRead` looks like this:
 
 
 
-## ### A Big Defect With tikio::select!
+### DDBB Client
 
-### Description
+Basically, the client of ddbb continuously listens to input from user in a loop and parses that input into a command entry. And all transferring data are packed into the data structure `Frame`.
+
+```rust
+enum CommandEntry {
+    SetValue {
+        key: String,
+        value: Bytes,
+    },
+	// code...
+    Empty,
+}
+```
+
+#### Message Listening
+
+```rust
+async fn message_receiver(receiver: mpsc::Receiver<>) ;
+```
+
+Here we use an asynchronized function *message_receiver* to listen to the response returned by server. The function receives messages through a Rust `mpsc` channel and processes the messages received by decoding them using `bincode`, then performs different actions depending on the type of the message. If the message is a "peers" message, the function updates a count of the number of active nodes. If the message is a "put" or "get" message, the function determines which node should handle the message based on the key in the message, connects to that node using a `TcpStream`, and sends the message. If the message type is not recognized, the function prints an error message.
+
+The function reads bytes stored in receiver buffer and checks which the message type is, which is asynchronized and guarantees ordered data transferring.
+
+
+
+## Benchmark 
+
+@temp
+
+
+
+### ### A Big Defect With tikio::select!
+
+#### Description
 
 Take a look at this case:
 
@@ -374,9 +451,9 @@ async fn main() {
 }
 ```
 
-The `async_blocking` is a blocking async code block and the `async_task` is a non-blocking async task. With `tokio::select!` we can expect that one of the async tasks inside the `select!` will finish and the program will make progress (in this case, the`async_task` will always finish and program will return). **But the answer is NO!** 
+The `async_blocking` is a blocking async task and the `async_task` is a non-blocking async task. With `tokio::select!` we would expect that one of the async tasks inside the `select!` will finish and the program will make progress (in this case, the`async_task` will always finish and program will return). **But the answer is NO!** 
 
-### Analyses
+#### Analyses
 
 As the description in the document of `tokio::select`:
 
@@ -384,7 +461,7 @@ As the description in the document of `tokio::select`:
 
 Which means in this case, the answer about if the program can make progress depends on which task will be chosen firstly to be  executed. So the program will have 50% chance to be blocking!
 
-### Solution
+#### Solution
 
 - **Use `biased`**
 
@@ -419,7 +496,7 @@ Which means in this case, the answer about if the program can make progress depe
   ```
 
 
-### ❗Things even worse in `#[tokio::test]`
+#### ❗Things even worse in `#[tokio::test]`
 
-There must not be any blocking async task in `#[tokio::test]` function (like the `async_blocking` above) cause `tokio::test` using a single thread model, which means the `tokio::test` program will always be blocking if there is a blocking operation in the code.
+There must not be any blocking async task in `#[tokio::test]` function (like the `async_blocking` above), cause `tokio::test` is using a single thread model, which means the `tokio::test` program will always be blocking if there is a blocking operation in the code.
 
