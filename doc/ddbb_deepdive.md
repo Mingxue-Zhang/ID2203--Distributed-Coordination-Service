@@ -270,6 +270,29 @@ impl OmniPaxosServer {
 
 > Code: ddbb_server/src/ddbb_server.rs
 
+### Local storage
+
+#### WAL Store
+
+The WAL (write ahead log) store is to store all log entries decided by the `OmniPaxos`.
+
+```rust
+struct WALStore {
+    dicided_len: u64,
+    store: Vec<LogEntry>,
+}
+```
+
+#### KVStore
+
+The this is the storage of K-V entries, which is built by filtering the logs in the `WALSore`.
+
+```rust
+struct KVStore {
+    store: HashMap<String, Vec<u8>>,
+}
+```
+
 ### Basic operation
 
 #### Set and Get
@@ -327,9 +350,7 @@ async fn lin_read(key: String) -> Result<Vec<u8>>{
 }
 ```
 
-
-
-The workflow of `LinRead` looks like this:
+The whole workflow of `LinRead` looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230318182055078.png" alt="image-20230318182055078" style="zoom:67%;" />
 
