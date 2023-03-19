@@ -336,7 +336,7 @@ struct KVStore {
 
 ##### Set and Get
 
-Basic `set` and `get` operation supply **Sequential Consistency**. Which were implemented by `WRITE MAJORITY READ LOCAL` algorithm.
+Basic `set` and `get` operation supply **Sequential Consistency** which were implemented by `WRITE MAJORITY READ LOCAL` algorithm.
 
 ```rust
 ddbb.set("key", Vec::from([1])).unwrap();
@@ -557,7 +557,7 @@ And to make the whole project better and more practical, one of the features sho
 
 <!-- Write a paragraph that summarizes the whole project. What was the problem and what was achieved.  -->
 
-To sum up, the project is very interesting, and kind of demanding since most of my teamnates are not that familiarity with the Rust language. The time is also very limited, so the pressure is a bit high.  
+To sum up, the project is very interesting, and kind of demanding since most of my teamnates are not that familiar with Rust language. The time is also very limited, so the pressure is a bit high.  
 
 However, we still finished the project and achieved several functionality points, such as linearizable & serializable read and write, and connection layer implementation for OmniPaxos, which uses using failure-recovery model. And we also completed testing, and even though the performance wasn't that great, it turned out that the features we wanted to verify worked as expected. Through multiple tests, we have a deeper understanding of linearizable and serializable. All in all, I learned a lot from the project.
 
