@@ -487,14 +487,14 @@ Since our project is using omni-paxos to emulate etcd, we chose to perform perfo
 
 ### 5-1 Table of test cases
 
-- [The impact of cluster size on read and write performance](#441-the-impact-of-cluster-size-on-read-and-write-performance)
-- [The impact of request size on performance](#442-the-impact-of-request-size-on-performance)
-- [Serializable and Linearizable](#443-serializable-and-linearizable)
-- [Single / Multiple Write Requests](#444-single--multiple-write-requests)
-- [Maximum operation per unit time](#445-maximum-operation-per-unit-time)
-- [DDBB and etcd comparison analysis](#446-ddbb-and-etcd-comparison-analysis)
-- [Partial connectivties](#447-partial-connectivity)
-- [Fail Recovery](#448-fail-recovery)
+- [The impact of cluster size on read and write performance](#5-4-1-the-impact-of-cluster-size)
+- [The impact of request size on performance](#5-4-2-the-impact-of-request-size)
+- [Serializable and Linearizable](#5-4-3-serializable-and-linearizable)
+- [Single / Multiple Write Requests](#5-4-4-single--multiple-write-requests)
+- [Maximum operation per unit time](#5-4-5-maximum-operation-per-unit-time)
+- [DDBB and etcd comparison analysis](#5-4-6-etcd-comparison)
+- [Partial connectivties](#5-4-7-partial-connectivity)
+- [Fail Recovery](#5-4-8-fail-recovery)
 
 ### 5-2 Before testing
 
@@ -566,8 +566,12 @@ In our tests, linearizable write and read take a lot of time, about 5-5 times lo
 
 <img src="./ddbb_deepdive.assets/Single-Multiple%20Write%20Requests.png" alt="single-multiple" title="single Multiple" style="zoom: 67%;" />
 
-Single-threaded compared to multi-threaded, Multi-threaded can save 1/3 of the time, and the time savings are even more significant when there are a lot of accesses. The same result can be obtained from the Benchmark of etcd, as shown in the figure:
-
+Single-threaded compared to multi-threaded, Multi-threaded can save 1/3 of the time, and the time savings are even more significant when there are a lot of accesses. The same result can be obtained from the Benchmark of etcd, as shown in the Table:
+|          | 1000 Requests - Single           | 10000 Requests - Single         | 10000 Requests - Single           | 1000 Requests - Concurrent           |1000 Requests - Concurrent           |1000 Requests - Concurrent           |
+| ------------- | --------------- |--------------- |--------------- |--------------- |--------------- |--------------- |
+| Writes   |  2.0932 secs  | 20.1689 secs  |193.6696 secs  |  1.5353 secs| 16.1182 secs|  148.1724 secs|
+| Serializable Reads | 0.2688 secs  |2.5756 secs.  | 25.3775 secs|  0.2422 secs| 2.3705 secs| 22.7303 secs|
+| Linearizable Reads| 0.7025secs |7.1154 secs  | 71.8752 secs|  0.5561 secs| 5.7274 secs|  54.8549 secs|
 
 #### 5-4-5 Maximum operation per unit time
 
