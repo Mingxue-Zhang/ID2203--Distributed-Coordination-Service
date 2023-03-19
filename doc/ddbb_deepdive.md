@@ -1,10 +1,17 @@
 # DDBB
 
+[[TOC]]
+
 > A distributed key-value store inspired by etcd.
 >
 > [Git Hub Link](https://github.com/Mingxue-Zhang/ID2203--Distributed-Coordination-Service)
 
-## Intro
+## 1. Introduction
+
+Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it graunteens both Serializable and Linearizable operations.  
+<!-- Also the systme could  handel the particial connection secnarial -->
+
+We also completed several testing related performance and complare our solution with etcd. At the end of the day, we can say our system, DDBB, can reach 20% of the performance of etcd.
 
 ### Project group info
 
@@ -14,13 +21,11 @@
 | Mingxue Zhang | mingxue@kth.se  |
 | Zhengjin Wang | zhengjin@kth.se |
 
-
-
-## System overview
+## 2. System Overview
 
 > Below are all the information that you need to overally evaluate this project :)
 
-### Functions
+### 2.1 Functions
 
 - Stable and high-performance connection layer implementation for OmniPaxos, which is using failure-recovery model.
 - Linearizable read and write, sequential read and write, delete operations on a KV store.
@@ -28,7 +33,7 @@
 - Tolerates and recovers from partial connectivity.
 - Snapshots and compacts.
 
-### Testing
+### 2.2 Testing
 
 - Completed unit testing for all the components.
 - Parallel operation input testing and global trace analyses for linearizability.
@@ -36,21 +41,17 @@
 - Randomly connection cut off and consistency analyses for partial connectivity tolerance.
 - Benchmark testing and etcd comparation
 
+## 3. Design and implementation
 
-
-## Design and implementation
-
-### System architecture
+### 3.1 System architecture
 
 ![image-20230318122125327](ddbb_deepdive.assets/image-20230318122125327.png)
 
+### 3.2 Connection layer: OmniSIMO
 
-
-### Connection layer: OmniSIMO
-
->Omni Simo: a single incoming and multiple outgoing connection module for OmniPaxos instances' communication. 
+>Omni Simo: a single incoming and multiple outgoing connection module for OmniPaxos instances' communication.
 >
->Which is the most important part of our project. 
+>Which is the most important part of our project.
 
 #### Architecture
 
@@ -75,7 +76,7 @@ enum Frame {
 }
 ```
 
-##### Bytes to Frame 
+##### Bytes to Frame
 
 `ddbb` use a series of encodeing tags to cast bytes into `frame` which are similar to the protocol used by `redis`, to see details: [RESP protocol spec | Redis](https://redis.io/docs/reference/protocol-spec/)
 
@@ -106,7 +107,7 @@ The `Connection` model is to build an one2one network connection between two nod
       Connection {
           stream: BufWriter::new(tcp_socket),
           buffer: BytesMut::with_capacity(4 * 1024),
-      }	
+      } 
   }
   ```
 
@@ -129,7 +130,7 @@ pub async fn reconnect(&mut self, addr: String) -> Result<()> {
     // loop until reconnected
     loop {
         if let Ok(tcp_stream) = TcpStream::connect(&addr).await {
-			//code..
+   //code..
         };
         sleep(Duration::from_millis(RECONNECT_INTERVAL)).await;
     }
@@ -146,7 +147,7 @@ let reconn_msg = Frame::Error(RECONNECT_MSG);
 
 #### Data structure of DDBB
 
-> Code: ddbb_libs/src/data_structure.rs 
+> Code: ddbb_libs/src/data_structure.rs
 
 `ddbb` has different data structures for different view of the system.
 
@@ -252,7 +253,7 @@ pub struct OmniSIMO {
     /// #Example: nodeid: 6, addr: "127.0.0.1:25536"
     peers: <NodeId, String>,
     connected: <Vec<NodeId>>,
-	// code..
+ // code..
 }
 ```
 
@@ -286,8 +287,6 @@ connection.reconnect(reveiver_addr).await;
 connected.insert(0, reveiver_id);
 ```
 
-
-
 ### OmniPaxos server
 
 Similar structure with the OmniPaxos in `omnipaxos/examples/kv_store`:
@@ -307,8 +306,6 @@ impl OmniPaxosServer {
     }
 }
 ```
-
-
 
 ### DDBB core
 
@@ -356,11 +353,11 @@ These two operations supply **Linearizability**, which were implemented by `WRIT
 pub enum LogEntry {
     LINRead {
         opid: (String, u64),
-		// code ...
+  // code ...
     },
     LINWrite {
         opid: (String, u64),
-		// code ...
+  // code ...
     },
 }
 ```
@@ -398,8 +395,6 @@ The whole workflow of `LinRead` looks like this:
 
 <img src="ddbb_deepdive.assets/image-20230318182055078.png" alt="image-20230318182055078" style="zoom:67%;" />
 
-
-
 ### DDBB Client
 
 Basically, the client of ddbb continuously listens to input from user in a loop and parses that input into a command entry. And all transferring data are packed into the data structure `Frame`.
@@ -410,7 +405,7 @@ enum CommandEntry {
         key: String,
         value: Bytes,
     },
-	// code...
+ // code...
     Empty,
 }
 ```
@@ -425,101 +420,150 @@ Here we use an asynchronized function *message_receiver* to listen to the respon
 
 The function reads bytes stored in receiver buffer and checks which the message type is, which is asynchronized and guarantees ordered data transferring.
 
-## Benchmark  
+## 4. Benchmark  
 
 Since our project is using omni-paxos to emulate etcd, we chose to perform performance tests.
 Our main test directions are read and write performance tests, single-threaded and multi-threaded, and performance comparison with etcd.
 
-### Table of test cases
+### 4.1 Table of test cases
 
-### Before testing
+- [The impact of cluster size on read and write performance](#441-the-impact-of-cluster-size-on-read-and-write-performance)
+- [The impact of request size on performance](#442-the-impact-of-request-size-on-performance)
+- [Serializable and Linearizable](#443-serializable-and-linearizable)
+- [Single / Multiple Write Requests](#444-single--multiple-write-requests)
+- [Maximum operation per unit time](#445-maximum-operation-per-unit-time)
+- [DDBB and etcd comparison analysis](#446-ddbb-and-etcd-comparison-analysis)
+- [Partical connectivties](#447-partial-connectivity)
+- [Fail Recovery](#448-fail-recovery)
+
+### 4.2 Before testing
 
 Before diving into testing details:
 
-To have a stander VM to complete our testing, we decided to create an ec2 instance in AWS. The congiruation is:  
+To have a standard VM to complete our testing, we decided to create an ec2 instance in AWS. The confirmation is the following:
 
 - Image: Canonical, Ubuntu, 22.04 LTS, amd64 jammy image build on 2023-02-08  
 - Instance type: t2 micro with 1 CPU and 1 RAM
-- Storage size: 30 GB
+- Storage/Disk size: 30 GB
 
-Besides the testing machine, we set define several rules and secnrial.
+Besides preparing the testing machine, we defined several rules and scenarios.
 
 - Size of Key and value is 24 bytes.
-- Use different amount of requests in each batch, eg of 1,000, 10,000, 100,000.  
+- Use different numbers of requests in each batch, such as 1,000, 10,000, 100,000.
 
-> We wanted to test 100,0000 requests, but we gave up because the performance is not very strong and it's very time consuming.
+> We wanted to test 100,0000 requests, but we gave up because the performance is not very strong and it's very time-consuming.
 
-### Tools used in testing
+### 4.3 Tools used in testing
 
-#### etcd
+#### etcd set up
 
-First, we need to set up an etcd cluster, we used **goreman** to start our cluster. The tool enables us to start a multi-member cluster by executing a Procfile file with a few commands (1 command `./goreman -f Procfile start`).
+First, we need to set up an etcd cluster; we used **goreman** to start our cluster. The tool enables us to start a multi-member cluster by executing a Procfile file with a few commands (1 command `./goreman -f Procfile start`).
 
 > go must be installed first
 > Execute `go install github.com/mattn/goreman@latest`  
-> The Procfile file here is the Procfile file from the root of etcd's gitub project, but it needs to be modified by changing bin/etcd to etcd
+> The Procfile file here is the Procfile file from the root of etcd's gitub project, but it needs to be modified by changing `bin/etcd` to etcd
 
-The started members are each listening for client requests on localhost:12379, localhost:22379, and localhost:32379.
+The started members are each listening for client requests on `localhost:12379`, `localhost:22379`, `localhost:32379`, `localhost:42379`, and `localhost:52379`.
+
+Our example:
+
+```
+etcd1: etcd --name infra1 --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379 --listen-peer-urls http://127.0.0.1:12380 --initial-advertise-peer-urls http://127.0.0.1:12380 --initial-cluster-token etcd-cluster-1 --initial-cluster 'infra1=http://127.0.0.1:12380,infra2=http://127.0.0.1:22380,infra3=http://127.0.0.1:32380' --initial-cluster-state new --enable-pprof --logger=zap --log-outputs=stderr
+
+etcd2: etcd --name infra2 --listen-client-urls http://127.0.0.1:22379 --advertise-client-urls http://127.0.0.1:22379 --listen-peer-urls http://127.0.0.1:22380 --initial-advertise-peer-urls http://127.0.0.1:22380 --initial-cluster-token etcd-cluster-1 --initial-cluster 'infra1=http://127.0.0.1:12380,infra2=http://127.0.0.1:22380,infra3=http://127.0.0.1:32380' --initial-cluster-state new --enable-pprof --logger=zap --log-outputs=stderr
+
+etcd3: etcd --name infra3 --listen-client-urls http://127.0.0.1:32379 --advertise-client-urls http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 --initial-advertise-peer-urls http://127.0.0.1:32380 --initial-cluster-token etcd-cluster-1 --initial-cluster 'infra1=http://127.0.0.1:12380,infra2=http://127.0.0.1:22380,infra3=http://127.0.0.1:32380' --initial-cluster-state new --enable-pprof --logger=zap --log-outputs=stderr
+
+```
 
 Next, test the it with the official Benchmark CLI tool from etcd. Can be found at
 [Benchmark](https://github.com/etcd-io/etcd/tree/v3.4.16/tools/benchmark)
 
+#### DDBB set up
 
-#### DDBB
+Start our server with `cargo run --bin ddbb_server`, then run into different cases. More details can be found in our repo ReadMe.
 
-#### Test Cases
+### 4.4 Test Cases
 
-##### The impact of cluster size on read and write performance
+##### 4.4.1 The impact of cluster size on read and write performance
 
-We first divide into 2 broad categories to determine if the size of the cluster affects performance, which are 3 nodes and 5 nodes
+We first divide our test cases into 2 clusters to determine if the size of the cluster affects performance, which one contains 3 nodes and the other contains 5 nodes
 
 ![cluster-size](./ddbb_deepdive.assets/cluster%20size.png "cluster size")
 
-As can be seen in the figure, the size of the cluster has almost no effect on reads. For writes, there is some impact, especially linearizable writes, but the impact is within 5% of the acceptable range.
+As can be seen from the graph, the cluster size has almost no effect on the read data. For write operations, on the other hand, there is an effect, especially for linearizable writes, within 10%, which we consider to be acceptable.
 
-##### The impact of request size on performance
+##### 4.4.2 The impact of request size on performance
 
 ![requests-size](./ddbb_deepdive.assets/requests_size.png "requests size")
 
-Because Lin's read and write transitions are time consuming when the request size is 100000 and would interfere with viewing if added to the graph, only their values can be marked. Through several tests, we found that the read and write performance grows linearly and almost in proportion to the ratio between requests.
+This is because linearizable read/write conversions are time-consuming when the request volume is 100000. If added to the graph it would affect the data deflation and become unreadable, so only their values can be marked. Through several tests, we found that the performance of reads and writes grows linearly and is almost proportional to the ratio between requests. For example, if the request increases ten times, the processing time becomes similarly ten times.
 
-##### Serializable and Linearizable
+##### 4.4.3 Serializable and Linearizable
 
 ![writes](./ddbb_deepdive.assets/writes.png "writes")
 
 ![reads](./ddbb_deepdive.assets/reads.png "reads")
 
-In our tests, Linearizable write and read take a lot of time, about 4-5 times longer than seq. The main reasons for this are Linearizable read requests go through a quorum of cluster members for consensus to fetch the most recent data. Serializable read requests are cheaper than linearizable reads since they are served by any single etcd member, instead of a quorum of members, in exchange for possibly serving stale data.
+In our tests, linearizable write and read take a lot of time, about 4-5 times longer than serializable. The main reasons for this are Linearizable read requests go through a quorum of cluster members for consensus to fetch the most recent data. Serializable read requests are cheaper than linearizable reads since they are served by any single node, instead of a quorum of members, in exchange for possibly serving stale data.
 
-#### Single / Multiple Write Requests
+#### 4.4.4 Single / Multiple Write Requests
 
 ![single-multiple](./ddbb_deepdive.assets/Single-Multiple%20Write%20Requests.png "single Multiple")
 
-Single threaded compared to multi-threaded,
-Multi-threaded can save 1/3 of the time, and the time saved is more obvious when the access volume is large.
+Single-threaded compared to multi-threaded
+Multi-threaded can save 1/3 of the time, and the time savings are even more significant when there are a lot of accesses.
 
-#### Maximum operation per unit time
+The same result can be obtained from the Benchmark of etcd, as shown in the figure:
 
-After our testing, our DDBB can support writing 7000 records and reading 100000 data per minute with Serializable. To ensure Linearizable, the performance of our solution is significantly lower.
-This test is performed by using the process sleep time sleep(Duration::from_millis(5)).await; the final minimum sleep time for a cluster of 5 nodes is 10 millis and 5 for 3 nodes to ensure no data loss.
 
-#### DDBB and etcd comparison analysis
+#### 4.4.5 Maximum operation per unit time
+
+After our testing, our DDBB can support writing 7000 records and reading 100000 data per minute with serializable operations.  
+
+To ensure linearizable operations, the performance of our solution is significantly lower.
+This test is performed by using the process sleep time `sleep(Duration::from_millis(5)).await`;
+
+The final minimum sleep time for a cluster of 5 nodes is **10 milliseconds**; **5 milliseconds** for 3 nodes to ensure no data loss.
+
+#### 4.4.6 DDBB and etcd comparison analysis
 
 ![ddbb-etcd](./ddbb_deepdive.assets/etcd-ddbb.png "ddbb etcd")
 
-According to our results, with seq writes, we can achieve 30% of the speed of etcd in various seqs, and even faster reads than etcd in the case of seq reads.
+According to our results, with seq writes, we can achieve 30% of the speed of etcd in various serializable operations and even faster reads than etcd in the case of seq reads.
 
-However, when it comes to lin reads and writes, our performance becomes extremely poor. It can only reach about 5% of the performance of etcd, and 1/6 of the performance of etcd in the multi-threaded case.  
+However, our performance becomes extremely poor when it comes to linearizable reads and writes. It can only reach about 5% of the performance of etcd, and 1/6 of the performance of etcd in the multi-threaded case.  
 
-One of the reasons is that we have to let the threads sleep for a while to make sure that the data can be stored and read without errors. This is the main area of improvement for us in the future
+One of the reasons is that we have to let the threads sleep for a while to ensure that the data can be stored and read without errors. This is the main area of improvement for us in the future.
 
-#### Partical connectivties
+#### 4.4.7 Partial Connectivity
 
-[To-Do]
+[[to-do]]
+
+#### 4.4.8 Fail Recovery
+
+etcd supports fail recovery like the following, we start our cluster and kill one node from the cluster. Then we try to add a record to the database. Then let the failed node rejoin the cluster and get the form from the recovered node.
+
+![fail-recovery](./ddbb_deepdive.assets/fail-recover-etcd.png "fail recovery")
 
 
+### 5. Future Work
 
-### ### A Big Defect With tikio::select!
+How can your work be further extended and improved in the future (either by you or others)? You can also mention things you wanted to solve but there was simply not enough time.
+
+As mentioned abouve, as We currently haven't found a specific reason why our program is taking an extremely long time to operate in lin. So if we have time, we should spend more time debugging to find the cause or come up with a more efficient solution.
+
+And to make the whole project better and more practical, one of the features should be user groups so that users can operate according to their assigned role, which is, of course an add-on feature.
+
+### 6. Summary
+
+<!-- Write a paragraph that summarizes the whole project. What was the problem and what was achieved.  -->
+
+To sum up, the project is very intersting, and kind of demanding since most of my teamates are not that familiarity with the Rust language. The time is also very limited, so the pressure is a bit high.  
+
+However, we still finished the project and achieved several functionality points, such as linearizable & serializable read and write, and connection layer implementation for OmniPaxos, which uses using failure-recovery model. And we also completed testing, and even though the performance wasn't that great, it turned out that the features we wanted to verify worked as expected. Through multiple tests, we have a deeper understanding of linearizable and serializable. All in all, I learned a lot from the project.
+
+### A Big Defect With tikio::select
 
 #### Description
 
@@ -537,7 +581,7 @@ async fn main() {
 }
 ```
 
-The `async_blocking` is a blocking async task and the `async_task` is a non-blocking async task. With `tokio::select!` we would expect that one of the async tasks inside the `select!` will finish and the program will make progress (in this case, the`async_task` will always finish and program will return). **But the answer is NO!** 
+The `async_blocking` is a blocking async task and the `async_task` is a non-blocking async task. With `tokio::select!` we would expect that one of the async tasks inside the `select!` will finish and the program will make progress (in this case, the`async_task` will always finish and program will return). **But the answer is NO!**
 
 #### Analyses
 
@@ -581,8 +625,6 @@ Which means in this case, the answer about if the program can make progress depe
   }
   ```
 
-
 #### ❗Things even worse in `#[tokio::test]`
 
 There must not be any blocking async task in `#[tokio::test]` function (like the `async_blocking` above), cause `tokio::test` is using a single thread model, which means the `tokio::test` program will always be blocking if there is a blocking operation in the code.
-
