@@ -6,7 +6,7 @@
 
 ## 1. Introduction
 
-Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it graunteens both Serializable and Linearizable operations.  
+Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it guaranteens both Serializable and Linearizable operations.  
 <!-- Also the systme could  handel the particial connection secnarial -->
 
 We also completed several testing related performance and complare our solution with etcd. At the end of the day, we can say our system, DDBB, can reach 20% of the performance of etcd.
@@ -243,7 +243,7 @@ loop {
 
 ##### Group membership management
 
-Infomation of the communication group membership is defined during the init phase of `OmniSIMO`:
+Information of the communication group membership is defined during the init phase of `OmniSIMO`:
 
 ```rust
 pub struct OmniSIMO {
@@ -431,7 +431,7 @@ Our main test directions are read and write performance tests, single-threaded a
 - [Single / Multiple Write Requests](#444-single--multiple-write-requests)
 - [Maximum operation per unit time](#445-maximum-operation-per-unit-time)
 - [DDBB and etcd comparison analysis](#446-ddbb-and-etcd-comparison-analysis)
-- [Partical connectivties](#447-partial-connectivity)
+- [Partial connectivties](#447-partial-connectivity)
 - [Fail Recovery](#448-fail-recovery)
 
 ### 4.2 Before testing
@@ -549,7 +549,7 @@ etcd supports fail recovery like the following, we start our cluster and kill on
 
 How can your work be further extended and improved in the future (either by you or others)? You can also mention things you wanted to solve but there was simply not enough time.
 
-As mentioned abouve, as We currently haven't found a specific reason why our program is taking an extremely long time to operate in lin. So if we have time, we should spend more time debugging to find the cause or come up with a more efficient solution.
+As mentioned above, as We currently haven't found a specific reason why our program is taking an extremely long time to operate in lin. So if we have time, we should spend more time debugging to find the cause or come up with a more efficient solution.
 
 And to make the whole project better and more practical, one of the features should be user groups so that users can operate according to their assigned role, which is, of course an add-on feature.
 
@@ -557,7 +557,7 @@ And to make the whole project better and more practical, one of the features sho
 
 <!-- Write a paragraph that summarizes the whole project. What was the problem and what was achieved.  -->
 
-To sum up, the project is very intersting, and kind of demanding since most of my teamates are not that familiarity with the Rust language. The time is also very limited, so the pressure is a bit high.  
+To sum up, the project is very interesting, and kind of demanding since most of my teamnates are not that familiarity with the Rust language. The time is also very limited, so the pressure is a bit high.  
 
 However, we still finished the project and achieved several functionality points, such as linearizable & serializable read and write, and connection layer implementation for OmniPaxos, which uses using failure-recovery model. And we also completed testing, and even though the performance wasn't that great, it turned out that the features we wanted to verify worked as expected. Through multiple tests, we have a deeper understanding of linearizable and serializable. All in all, I learned a lot from the project.
 
