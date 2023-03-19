@@ -1,7 +1,5 @@
 # DDBB
 
-[TOC]
-
 > A distributed key-value store inspired by etcd.
 >
 > [Git Hub Link](https://github.com/Mingxue-Zhang/ID2203--Distributed-Coordination-Service)
