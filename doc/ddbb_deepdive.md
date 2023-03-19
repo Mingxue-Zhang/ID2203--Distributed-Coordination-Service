@@ -1,6 +1,6 @@
 # DDBB
 
-[[TOC]]
+[TOC]
 
 > A distributed key-value store inspired by etcd.
 >
