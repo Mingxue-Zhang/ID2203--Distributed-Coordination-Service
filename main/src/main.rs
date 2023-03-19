@@ -27,6 +27,7 @@ async fn main() {
     // error!("this is printed by default");
     // info!("info temp");
 
+    // initialize
     let mut node_ids: [u64; 3] = [1, 2, 3];
     let mut servers: HashMap<NodeId, String> = HashMap::new();
     servers.insert(1, "127.0.0.1:6550".to_string());
@@ -65,72 +66,128 @@ async fn main() {
     sleep(Duration::from_millis(1000)).await;
 
     let ddbb1 = ddbbs.get(0).unwrap();
-    let ddbb2 = ddbbs.get(1).unwrap();
-    let ddbb3 = ddbbs.get(2).unwrap();
+    // user cmd
+    let sign = format!(">>");
+    use std::io::{Write};
 
-    ddbb1
-        .lock()
-        .unwrap()
-        .set("key1".to_string(), Vec::from([1]))
-        .unwrap();
-    ddbb1
-        .lock()
-        .unwrap()
-        .set("key4".to_string(), Vec::from([4]))
-        .unwrap();
-    ddbb2
-        .lock()
-        .unwrap()
-        .set("key2".to_string(), Vec::from([2]))
-        .unwrap();
-    ddbb1
-        .lock()
-        .unwrap()
-        .set("key2".to_string(), Vec::from([2, 1]))
-        .unwrap();
-    ddbb3
-        .lock()
-        .unwrap()
-        .set("key1".to_string(), Vec::from([1, 1]))
-        .unwrap();
-    ddbb1
-        .lock()
-        .unwrap()
-        .set("key3".to_string(), Vec::from([3]))
-        .unwrap();
+    loop {
+        //Get the input command
+        print!("{}", sign);
+        std::io::stdout().flush().unwrap();
+        let mut input = String::new();
+        match std::io::stdin().read_line(&mut input) {
+            Ok(_) => (),
+            Err(err) => println!("Could not parse input: {}", err)
+        }
+        let input_vector:Vec<&str> = input.trim().split(" ").collect();
 
-    DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3, 1])).await;
-    DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2, 2])).await;
-    DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1, 2])).await;
-    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    ddbb2.lock().unwrap().get("key1".to_string());
-    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    ddbb1.lock().unwrap().compact();
-    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
+        if input_vector[0] == "read" {
+            if input_vector.len() == 2 {
+                let res = DDBB::lin_read(ddbb1.clone(), input_vector[1].to_string()).await;
+                match res {
+                    Ok(value)=>{
+                        println!("{:?}", value.unwrap())
+                    },
+                    Err(e) =>{
+                        unwrap_failed("called `Result::unwrap()` on an `Err` value", &e)
+                    }
+                }
 
-    sleep(Duration::from_millis(1000)).await;
-    ddbb1.lock().unwrap().show_wal_store();
-    ddbb2.lock().unwrap().show_wal_store();
+            } else {
+                println!(" -> ERROR: Incorrect  command");
+            }
 
-    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    ddbb1.lock().unwrap().compact();
-    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
 
-    sleep(Duration::from_millis(1000)).await;
-    ddbb1.lock().unwrap().show_wal_store();
-    ddbb2.lock().unwrap().show_wal_store();
+        }
+        else if input_vector[0] == "write" {
+            if input_vector.len() == 3 {
+                let res = DDBB::lin_write(ddbb1.clone(), input_vector[1].to_string(), input_vector[2].as_bytes().to_vec()).await;
+                match res {
+                    Ok(value)=>{
+                        println!("Succesfully wrote.")
+                    },
+                    Err(e) =>{
+                        unwrap_failed("called `Result::unwrap()` on an `Err` value", &e)
+                    }
+                }
+            } else {
+                println!(" -> ERROR: Incorrect command");
+            }
 
-    ddbb1.lock().unwrap().compact();
-    sleep(Duration::from_millis(1000)).await;
-    ddbb1.lock().unwrap().show_wal_store();
-
-    ddbb1.lock().unwrap().compact();
-    sleep(Duration::from_millis(1000)).await;
-    ddbb1.lock().unwrap().show_wal_store();
+        }
+        else{
+            //If it is not a put or a get
+            println!(" -> ERROR: Unknown command");
+        }
+    }
+    //test
+    // let ddbb1 = ddbbs.get(0).unwrap();
+    // let ddbb2 = ddbbs.get(1).unwrap();
+    // let ddbb3 = ddbbs.get(2).unwrap();
+    //
+    // ddbb1
+    //     .lock()
+    //     .unwrap()
+    //     .set("key1".to_string(), Vec::from([1]))
+    //     .unwrap();
+    // ddbb1
+    //     .lock()
+    //     .unwrap()
+    //     .set("key4".to_string(), Vec::from([4]))
+    //     .unwrap();
+    // ddbb2
+    //     .lock()
+    //     .unwrap()
+    //     .set("key2".to_string(), Vec::from([2]))
+    //     .unwrap();
+    // ddbb1
+    //     .lock()
+    //     .unwrap()
+    //     .set("key2".to_string(), Vec::from([2, 1]))
+    //     .unwrap();
+    // ddbb3
+    //     .lock()
+    //     .unwrap()
+    //     .set("key1".to_string(), Vec::from([1, 1]))
+    //     .unwrap();
+    // ddbb1
+    //     .lock()
+    //     .unwrap()
+    //     .set("key3".to_string(), Vec::from([3]))
+    //     .unwrap();
+    //
+    // DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3, 1])).await;
+    // DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2, 2])).await;
+    // DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1, 2])).await;
+    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    // ddbb2.lock().unwrap().get("key1".to_string());
+    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    // ddbb1.lock().unwrap().compact();
+    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    // DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
+    //
+    // sleep(Duration::from_millis(1000)).await;
+    // ddbb1.lock().unwrap().show_wal_store();
+    // ddbb2.lock().unwrap().show_wal_store();
+    //
+    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    // ddbb1.lock().unwrap().compact();
+    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    // DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
+    //
+    // sleep(Duration::from_millis(1000)).await;
+    // ddbb1.lock().unwrap().show_wal_store();
+    // ddbb2.lock().unwrap().show_wal_store();
+    //
+    // ddbb1.lock().unwrap().compact();
+    // sleep(Duration::from_millis(1000)).await;
+    // ddbb1.lock().unwrap().show_wal_store();
+    //
+    // ddbb1.lock().unwrap().compact();
+    // sleep(Duration::from_millis(1000)).await;
+    // ddbb1.lock().unwrap().show_wal_store();
 }
