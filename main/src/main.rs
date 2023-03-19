@@ -89,7 +89,7 @@ async fn main() {
                         println!("{:?}", value.unwrap())
                     },
                     Err(e) =>{
-                        unwrap_failed("called `Result::unwrap()` on an `Err` value", &e)
+                        println!("Error occurred!")
                     }
                 }
 
@@ -107,7 +107,7 @@ async fn main() {
                         println!("Succesfully wrote.")
                     },
                     Err(e) =>{
-                        unwrap_failed("called `Result::unwrap()` on an `Err` value", &e)
+                        println!("Error occurred!")
                     }
                 }
             } else {
