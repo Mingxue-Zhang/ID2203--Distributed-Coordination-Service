@@ -17,7 +17,7 @@ pub enum DataEntry {
 }
 
 /// For omni-paxos.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize,PartialEq, Eq)]
 pub enum LogEntry {
     SetValue {
         key: String,
