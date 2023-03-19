@@ -7,7 +7,7 @@ use log::{debug, error, info, log_enabled, Level};
 use std::collections::HashMap;
 use std::env::set_var;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::Instant;
 use rand::Rng;
 use rand::distributions::{Distribution, Standard};
 // @temp
