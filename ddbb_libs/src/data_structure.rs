@@ -33,6 +33,7 @@ pub enum LogEntry {
         key: String,
         value: Vec<u8>,
     },
+    Compact
 }
 
 /// For ddbb_client and ddbb_sever.

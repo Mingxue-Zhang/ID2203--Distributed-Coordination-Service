@@ -1,7 +1,10 @@
 use log::{debug, info};
 use omnipaxos_core::{omni_paxos::OmniPaxos, util::LogEntry as OmniLogEntry, util::NodeId};
 use serde_json::Map;
-use tokio::time::{sleep, Duration};
+use tokio::{
+    runtime::Handle,
+    time::{sleep, Duration},
+};
 
 use std::{
     clone,
@@ -16,7 +19,7 @@ use ddbb_libs::{Error, Result};
 
 pub struct DDBB {
     node_info: NodeInfo,
-    wal_store: WALStore,
+    wal_store: Arc<Mutex<WALStore>>,
     kv_store: KVStore,
     peers: Arc<Mutex<HashMap<NodeId, String>>>,
     simo: Arc<Mutex<OmniSIMO>>,
@@ -32,7 +35,7 @@ struct NodeInfo {
 
 #[derive(Debug)]
 struct WALStore {
-    len: u64,
+    idx: u64,
     store: Vec<LogEntry>,
 }
 
@@ -40,7 +43,7 @@ impl WALStore {
     pub fn new() -> Self {
         Self {
             store: Vec::new(),
-            len: 0,
+            idx: 0,
         }
     }
 
@@ -49,8 +52,8 @@ impl WALStore {
         self.store.insert(0, log);
     }
 
-    pub fn len(&self) -> u64 {
-        self.store.len().try_into().unwrap()
+    pub fn diceded(&self) -> u64 {
+        self.idx
     }
 }
 
@@ -94,7 +97,7 @@ impl DDBB {
             peers,
             simo,
             omni,
-            wal_store: WALStore::new(),
+            wal_store: Arc::new(Mutex::new(WALStore::new())) ,
             kv_store: KVStore::new(),
             timestamp: 0,
         }
@@ -137,14 +140,14 @@ impl DDBB {
         self.timestamp += 1;
     }
 
-    pub fn find_log_by_opid(&self, addr: String, ts: u64) -> Option<LogEntry> {
+    fn find_log_by_opid(&self, addr: String, ts: u64) -> Option<LogEntry> {
         let mut opid_temp: (String, u64);
         let mut ts_temp: u64;
-        for log in self.wal_store.store.iter() {
+        for log in self.wal_store.lock().unwrap().store.iter() {
             match log.clone() {
-                LogEntry::SetValue { key, value } => break,
                 LogEntry::LINRead { opid, key, value } => opid_temp = opid,
                 LogEntry::LINWrite { opid, key, value } => opid_temp = opid,
+                _ => break,
             };
             if opid_temp.0.eq(&addr) && opid_temp.1 == ts {
                 return Some(log.clone());
@@ -239,7 +242,7 @@ impl DDBB {
     // temp: for debug
     pub fn show_wal_store(&self) {
         info!("Wal of {:?}:", self.node_info.id);
-        for log in self.wal_store.store.iter() {
+        for log in self.wal_store.lock().unwrap().store.iter() {
             info!("\t{:?}", log);
         }
         info!("\tkv store: {:?}", self.kv_store);
@@ -250,23 +253,28 @@ impl DDBB {
             .omni
             .lock()
             .unwrap()
-            .read_decided_suffix(self.wal_store.len());
+            .read_decided_suffix(self.wal_store.lock().unwrap().diceded());
         if let Some(entrys) = committed_ents {
+            self.wal_store.lock().unwrap().idx += 1;
             for entry in entrys {
                 match entry {
                     OmniLogEntry::Decided(log) => match log.clone() {
                         LogEntry::SetValue { key, value } => {
-                            self.wal_store.append(log.clone());
+                            self.wal_store.lock().unwrap().append(log.clone());
                             self.kv_store.store.insert(key.clone(), value.clone());
                         }
                         LogEntry::LINRead { key, opid, value } => {
                             let value = self.get(key.clone());
-                            self.wal_store
+                            self.wal_store.lock().unwrap()
                                 .append(LogEntry::LINRead { opid, key, value });
                         }
                         LogEntry::LINWrite { opid, key, value } => {
                             self.kv_store.store.insert(key, value);
-                            self.wal_store.append(log.clone());
+                            self.wal_store.lock().unwrap().append(log.clone());
+                        }
+                        LogEntry::Compact => {
+                            self.wal_store.lock().unwrap().append(log.clone());
+                            self.snapshot();
                         }
                     },
                     _ => {}
@@ -282,6 +290,83 @@ impl DDBB {
         } else {
             return Err("append faild".into());
         }
+    }
+
+    fn snapshot(&mut self) {
+        let mut befor_first_compact = true;
+        let mut befor_second_compact = true;
+        let mut can_discard_write: HashMap<String, bool> = HashMap::new();
+        let mut new_log_vec: Vec<LogEntry> = Vec::new();
+        let mut wal_store = self.wal_store.lock().unwrap();
+        // self.show_wal_store();
+        for log in wal_store.store.iter() {
+            match log.clone() {
+                LogEntry::SetValue { key, value } => {
+                    if befor_first_compact && befor_second_compact {
+                        new_log_vec.insert(new_log_vec.len(), log.clone());
+                        can_discard_write.insert(key, true);
+                    } else if !befor_first_compact && befor_second_compact {
+                        if let Some(true) = can_discard_write.get(&key) {
+                            // do nothing
+                        } else {
+                            new_log_vec.insert(new_log_vec.len(), log.clone());
+                            can_discard_write.insert(key, true);
+                        }
+                    } else if !befor_first_compact && !befor_second_compact {
+                        if let Some(true) = can_discard_write.get(&key) {
+                            // do nothing
+                        } else {
+                            new_log_vec.insert(new_log_vec.len(), log.clone());
+                            can_discard_write.insert(key, true);
+                        }
+                    }
+                }
+                LogEntry::LINRead { opid, key, value } => {
+                    if befor_first_compact && befor_second_compact {
+                        new_log_vec.insert(new_log_vec.len(), log.clone());
+                    } else if !befor_first_compact && befor_second_compact {
+                        new_log_vec.insert(new_log_vec.len(), log.clone());
+                    } else if !befor_first_compact && !befor_second_compact {
+
+                    }
+                }
+                LogEntry::LINWrite { opid, key, value } => {
+                    if befor_first_compact && befor_second_compact {
+                        new_log_vec.insert(new_log_vec.len(), log.clone());
+                        can_discard_write.insert(key, true);
+                    } else if !befor_first_compact && befor_second_compact {
+                        if let Some(true) = can_discard_write.get(&key) {
+                            // do nothing
+                        } else {
+                            new_log_vec.insert(new_log_vec.len(), log.clone());
+                            can_discard_write.insert(key, true);
+                        }
+                    } else if !befor_first_compact && !befor_second_compact {
+                        if let Some(true) = can_discard_write.get(&key) {
+                            // do nothing
+                        } else {
+                            new_log_vec.insert(new_log_vec.len(), log.clone());
+                            can_discard_write.insert(key, true);
+                        }
+                    }
+                }
+                LogEntry::Compact => {
+                    if befor_first_compact && befor_second_compact {
+                        befor_first_compact = false;
+                        new_log_vec.insert(new_log_vec.len(), log.clone());
+                    } else if !befor_first_compact && befor_second_compact {
+                        befor_second_compact = false;
+                    }
+                }
+            };
+        }
+        // info!("new logs: {:?}", new_log_vec);
+        wal_store.store.clear();
+        wal_store.store.append(&mut new_log_vec);
+    }
+
+    pub fn compact(&self) {
+        self.put_log_into_omni(LogEntry::Compact);
     }
 }
 

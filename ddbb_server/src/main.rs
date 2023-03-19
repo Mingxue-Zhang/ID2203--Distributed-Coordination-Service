@@ -74,35 +74,71 @@ async fn main() {
     let ddbb2 = ddbbs.get(1).unwrap();
     let ddbb3 = ddbbs.get(2).unwrap();
 
-    ddbb1.lock().unwrap().set("key1".to_string(), Vec::from([1])).unwrap();
-    ddbb2.lock().unwrap().set("key2".to_string(), Vec::from([2])).unwrap();
-    ddbb1.lock().unwrap().set("key2".to_string(), Vec::from([2,1])).unwrap();
-    ddbb3.lock().unwrap().set("key1".to_string(), Vec::from([1,1])).unwrap();
-    ddbb1.lock().unwrap().set("key3".to_string(), Vec::from([3])).unwrap();
-    DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3,1])).await;
-    DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2,2])).await;
-    DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1,2])).await;
+    ddbb1
+        .lock()
+        .unwrap()
+        .set("key1".to_string(), Vec::from([1]))
+        .unwrap();
+    ddbb1
+        .lock()
+        .unwrap()
+        .set("key4".to_string(), Vec::from([4]))
+        .unwrap();
+    ddbb2
+        .lock()
+        .unwrap()
+        .set("key2".to_string(), Vec::from([2]))
+        .unwrap();
+    ddbb1
+        .lock()
+        .unwrap()
+        .set("key2".to_string(), Vec::from([2, 1]))
+        .unwrap();
+    ddbb3
+        .lock()
+        .unwrap()
+        .set("key1".to_string(), Vec::from([1, 1]))
+        .unwrap();
+    ddbb1
+        .lock()
+        .unwrap()
+        .set("key3".to_string(), Vec::from([3]))
+        .unwrap();
 
+    DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3, 1])).await;
+    DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2, 2])).await;
+    DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1, 2])).await;
+    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    ddbb2.lock().unwrap().get("key1".to_string());
+    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    ddbb1.lock().unwrap().compact();
+    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
 
-
-    
     sleep(Duration::from_millis(1000)).await;
     ddbb1.lock().unwrap().show_wal_store();
     ddbb2.lock().unwrap().show_wal_store();
-    ddbb3.lock().unwrap().show_wal_store();
 
-    info!(
-        "lin read key == key3 from ddbb2: {:?}",
-        DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await
-    );
-    info!(
-        "read key == key1 from ddbb2: {:?}",
-        ddbb2.lock().unwrap().get("key1".to_string())
-    );
-    info!(
-        "lin read key == key4 from ddbb2: {:?}",
-        DDBB::lin_read(ddbb1.clone(), "key4".to_string()).await
-    );
+    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    ddbb1.lock().unwrap().compact();
+    DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
+    DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
+    DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
+
+    sleep(Duration::from_millis(1000)).await;
+    ddbb1.lock().unwrap().show_wal_store();
+    ddbb2.lock().unwrap().show_wal_store();
+
+    ddbb1.lock().unwrap().compact();
+    sleep(Duration::from_millis(1000)).await;
+    ddbb1.lock().unwrap().show_wal_store();
+
+    ddbb1.lock().unwrap().compact();
+    sleep(Duration::from_millis(1000)).await;
+    ddbb1.lock().unwrap().show_wal_store();
 }
 
 // #[tokio::main]
