@@ -512,8 +512,13 @@ In our tests, linearizable write and read take a lot of time, about 4-5 times lo
 Single-threaded compared to multi-threaded
 Multi-threaded can save 1/3 of the time, and the time savings are even more significant when there are a lot of accesses.
 
-The same result can be obtained from the Benchmark of etcd, as shown in the figure:
+The same result can be obtained from the Benchmark of etcd, as shown in the Table:
 
+|          | 1000 Requests - Single           | 10000 Requests - Single         | 10000 Requests - Single           | 1000 Requests - Concurrent           |1000 Requests - Concurrent           |1000 Requests - Concurrent           |
+| ------------- | --------------- |--------------- |--------------- |--------------- |--------------- |--------------- |
+| Writes   |  2.0932 secs  | 20.1689 secs  |193.6696 secs  |  1.5353 secs| 16.1182 secs|  148.1724 secs|
+| Serializable Reads | 0.2688 secs  |2.5756 secs.  | 25.3775 secs|  0.2422 secs| 2.3705 secs| 22.7303 secs|
+| Linearizable Reads| 0.7025secs |7.1154 secs  | 71.8752 secs|  0.5561 secs| 5.7274 secs|  54.8549 secs|
 
 #### 4.4.5 Maximum operation per unit time
 
