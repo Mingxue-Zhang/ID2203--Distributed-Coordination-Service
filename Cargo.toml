@@ -2,10 +2,12 @@
 members = [
     "ddbb_server",
     "ddbb_client",
+    "main",
     "ddbb_libs",
-    "examples/connection_sever",
-    "examples/connection_client",
-    "examples/temp",
+    "test/connection_sever",
+    "test/connection_client",
+    "test/lin_test",
+    "test/temp",
     "omnipaxos_core",
     "omnipaxos_storage",
 ]

@@ -1378,6 +1378,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "lin_test"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "ddbb_libs",
+ "ddbb_server",
+ "env_logger",
+ "log",
+ "omnipaxos_core",
+ "omnipaxos_storage",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1407,6 +1425,23 @@ checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
  "cfg-if 1.0.0",
  "value-bag",
+]
+
+[[package]]
+name = "main"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "ddbb_libs",
+ "ddbb_server",
+ "env_logger",
+ "log",
+ "omnipaxos_core",
+ "omnipaxos_storage",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
