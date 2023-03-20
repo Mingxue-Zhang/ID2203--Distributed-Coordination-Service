@@ -29,6 +29,10 @@ struct Node {
     pid: u64,
     #[structopt(long)]
     ip_addr: String,
+    #[structopt(long)]
+    peer_ids: Vec<u64>,
+    #[structopt(long)]
+    peers_addrs: Vec<String>
 }
 #[tokio::main]
 async fn main() {
@@ -41,23 +45,25 @@ async fn main() {
     // initialize
     let node = Node::from_args();
     // let mut node_ids: Vec<u64> = vec![1, 2, 3];
-    let node_id:u64 = node.pid;
-    let node_addr:u64 = node.ip_addr;
-    
-    let mut servers: HashMap<NodeId, String> = HashMap::new();
-    servers.insert(node_id, node_addr);
-    println!("Initializing node {} with peers {:?}", node_id, node_addr);
+    let nodeid:u64 = node.pid;
+    let node_addr:String = node.ip_addr;
+    let peer_ids = node.peer_ids;
+    let peers_addrs = node.peers_addrs;
+
+    // let mut servers: HashMap<NodeId, String> = HashMap::new();
+    // servers.insert(node_id, node_addr);
+    // println!("Initializing node {} with peers {:?}", node_id, node_addr);
     // servers.insert(2, "127.0.0.1:6551".to_string());
     // servers.insert(3, "127.0.0.1:6552".to_string());
 
     let mut ddbbs: Vec<Arc<Mutex<DDBB>>> = Vec::new();
     // add_to_cluster(ddbbs.clone(), servers.clone(),node_ids.clone());
-    for (nodeid, nodeaddr) in servers.clone() {
-        let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
-        let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
+    // for (nodeid, nodeaddr) in servers {
+        // let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
+        // let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
         let mut peers: HashMap<NodeId, String> = HashMap::new();
-        for peerid in peer_ids.clone() {
-            peers.insert(peerid, servers.get(&peerid).unwrap().clone());
+        for i in 0..peer_ids.len() {
+            peers.insert(peer_ids[i], peers_addrs[i]);
         }
 
         let op_config = OmniPaxosConfig {
@@ -78,7 +84,7 @@ async fn main() {
         });
 
         ddbbs.insert(ddbbs.len(), ddbb);
-    }
+    // }
     
 
     sleep(Duration::from_millis(1000)).await;
