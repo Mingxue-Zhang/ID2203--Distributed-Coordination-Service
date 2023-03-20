@@ -9,6 +9,7 @@ use tokio::{runtime::Builder, sync::mpsc, time};
 use std::error::Error;
 use std::collections::HashMap;
 use std::env::set_var;
+use std::string;
 use std::sync::{Arc, Mutex};
 
 use ddbb_server::config::{ELECTION_TIMEOUT, OUTGOING_MESSAGE_PERIOD, WAIT_DECIDED_TIMEOUT};
@@ -19,6 +20,12 @@ use ddbb_server::omni_paxos_server::{
 };
 use omnipaxos_storage::memory_storage::MemoryStorage;
 
+struct Node {
+    #[structopt(long)]
+    pid: u64,
+    #[structopt(long)]
+    ip_addr: string,
+}
 #[tokio::main]
 async fn main() {
     // setup the logger
@@ -28,12 +35,16 @@ async fn main() {
     // info!("info temp");
 
     // initialize
-    let mut node_ids: Vec<u64> = vec![1, 2, 3];
+    let node = Node::from_args();
+    // let mut node_ids: Vec<u64> = vec![1, 2, 3];
+    let node_id:u64 = node.pid;
+    let node_addr:u64 = node.ip_addr;
     
     let mut servers: HashMap<NodeId, String> = HashMap::new();
-    servers.insert(1, "127.0.0.1:6550".to_string());
-    servers.insert(2, "127.0.0.1:6551".to_string());
-    servers.insert(3, "127.0.0.1:6552".to_string());
+    servers.insert(node_id, node_addr);
+    println!("Initializing node {} with peers {:?}", node_id, node_addr);
+    // servers.insert(2, "127.0.0.1:6551".to_string());
+    // servers.insert(3, "127.0.0.1:6552".to_string());
 
     let mut ddbbs: Vec<Arc<Mutex<DDBB>>> = Vec::new();
     // add_to_cluster(ddbbs.clone(), servers.clone(),node_ids.clone());
