@@ -28,40 +28,42 @@ async fn main() {
     // info!("info temp");
 
     // initialize
-    let mut node_ids: [u64; 3] = [1, 2, 3];
+    let mut node_ids: Vec<u64> = vec![1, 2, 3];
+    
     let mut servers: HashMap<NodeId, String> = HashMap::new();
     servers.insert(1, "127.0.0.1:6550".to_string());
     servers.insert(2, "127.0.0.1:6551".to_string());
     servers.insert(3, "127.0.0.1:6552".to_string());
 
     let mut ddbbs: Vec<Arc<Mutex<DDBB>>> = Vec::new();
-    for (nodeid, nodeaddr) in servers.clone() {
-        let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
-        let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
-        let mut peers: HashMap<NodeId, String> = HashMap::new();
-        for peerid in peer_ids.clone() {
-            peers.insert(peerid, servers.get(&peerid).unwrap().clone());
-        }
+    add_to_cluster(ddbbs.clone(), servers.clone(),node_ids.clone());
+    // for (nodeid, nodeaddr) in servers.clone() {
+    //     let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
+    //     let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
+    //     let mut peers: HashMap<NodeId, String> = HashMap::new();
+    //     for peerid in peer_ids.clone() {
+    //         peers.insert(peerid, servers.get(&peerid).unwrap().clone());
+    //     }
 
-        let op_config = OmniPaxosConfig {
-            pid: nodeid,
-            configuration_id: 1,
-            peers: peer_ids,
-            ..Default::default()
-        };
-        let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
-        // !! peer.clone
-        let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
-        let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
-        let ddbb = Arc::new(Mutex::new(ddbb));
+    //     let op_config = OmniPaxosConfig {
+    //         pid: nodeid,
+    //         configuration_id: 1,
+    //         peers: peer_ids,
+    //         ..Default::default()
+    //     };
+    //     let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
+    //     // !! peer.clone
+    //     let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
+    //     let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
+    //     let ddbb = Arc::new(Mutex::new(ddbb));
 
-        let ddbb_copy = ddbb.clone();
-        let omni_server_handler = tokio::spawn(async move {
-            DDBB::start(ddbb_copy).await.unwrap();
-        });
+    //     let ddbb_copy = ddbb.clone();
+    //     let omni_server_handler = tokio::spawn(async move {
+    //         DDBB::start(ddbb_copy).await.unwrap();
+    //     });
 
-        ddbbs.insert(ddbbs.len(), ddbb);
-    }
+    //     ddbbs.insert(ddbbs.len(), ddbb);
+    // }
 
     sleep(Duration::from_millis(1000)).await;
 
@@ -119,7 +121,12 @@ async fn main() {
             if input_vector.len() == 3 {
                 //应该再加到ddbbs里，而且现在添加到servers里的node不会在show命令中显示出来
                 let correct_v = input_vector[2].to_string();
-                let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
+                let new_nodeId:u64= input_vector[1].to_string().parse().unwrap();
+                node_ids.append(new_nodeId);
+                servers.insert(new_nodeId, correct_v);
+                let res = add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone());
+                // let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
+                
                 match res {
                     correct_v=>{
                         println!("Succesfully added.")
@@ -148,74 +155,34 @@ async fn main() {
             println!(" -> ERROR: Unknown command");
         }
     }
-    //test
-    // let ddbb1 = ddbbs.get(0).unwrap();
-    // let ddbb2 = ddbbs.get(1).unwrap();
-    // let ddbb3 = ddbbs.get(2).unwrap();
-    //
-    // ddbb1
-    //     .lock()
-    //     .unwrap()
-    //     .set("key1".to_string(), Vec::from([1]))
-    //     .unwrap();
-    // ddbb1
-    //     .lock()
-    //     .unwrap()
-    //     .set("key4".to_string(), Vec::from([4]))
-    //     .unwrap();
-    // ddbb2
-    //     .lock()
-    //     .unwrap()
-    //     .set("key2".to_string(), Vec::from([2]))
-    //     .unwrap();
-    // ddbb1
-    //     .lock()
-    //     .unwrap()
-    //     .set("key2".to_string(), Vec::from([2, 1]))
-    //     .unwrap();
-    // ddbb3
-    //     .lock()
-    //     .unwrap()
-    //     .set("key1".to_string(), Vec::from([1, 1]))
-    //     .unwrap();
-    // ddbb1
-    //     .lock()
-    //     .unwrap()
-    //     .set("key3".to_string(), Vec::from([3]))
-    //     .unwrap();
-    //
-    // DDBB::lin_write(ddbb1.clone(), "key3".to_string(), Vec::from([3, 1])).await;
-    // DDBB::lin_write(ddbb3.clone(), "key2".to_string(), Vec::from([2, 2])).await;
-    // DDBB::lin_write(ddbb1.clone(), "key1".to_string(), Vec::from([1, 2])).await;
-    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    // ddbb2.lock().unwrap().get("key1".to_string());
-    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    // ddbb1.lock().unwrap().compact();
-    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    // DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
-    //
-    // sleep(Duration::from_millis(1000)).await;
-    // ddbb1.lock().unwrap().show_wal_store();
-    // ddbb2.lock().unwrap().show_wal_store();
-    //
-    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    // ddbb1.lock().unwrap().compact();
-    // DDBB::lin_read(ddbb1.clone(), "key3".to_string()).await;
-    // DDBB::lin_read(ddbb2.clone(), "key2".to_string()).await;
-    // DDBB::lin_read(ddbb3.clone(), "key1".to_string()).await;
-    //
-    // sleep(Duration::from_millis(1000)).await;
-    // ddbb1.lock().unwrap().show_wal_store();
-    // ddbb2.lock().unwrap().show_wal_store();
-    //
-    // ddbb1.lock().unwrap().compact();
-    // sleep(Duration::from_millis(1000)).await;
-    // ddbb1.lock().unwrap().show_wal_store();
-    //
-    // ddbb1.lock().unwrap().compact();
-    // sleep(Duration::from_millis(1000)).await;
-    // ddbb1.lock().unwrap().show_wal_store();
+    
+}
+fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, String>, mut node_ids:Vec<u64>){
+    for (nodeid, nodeaddr) in servers.clone() {
+        let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
+        let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
+        let mut peers: HashMap<NodeId, String> = HashMap::new();
+        for peerid in peer_ids.clone() {
+            peers.insert(peerid, servers.get(&peerid).unwrap().clone());
+        }
+
+        let op_config = OmniPaxosConfig {
+            pid: nodeid,
+            configuration_id: 1,
+            peers: peer_ids,
+            ..Default::default()
+        };
+        let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
+        // !! peer.clone
+        let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
+        let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
+        let ddbb = Arc::new(Mutex::new(ddbb));
+
+        let ddbb_copy = ddbb.clone();
+        let omni_server_handler = tokio::spawn(async move {
+            DDBB::start(ddbb_copy).await.unwrap();
+        });
+
+        ddbbs.insert(ddbbs.len(), ddbb);
+    }
 }
