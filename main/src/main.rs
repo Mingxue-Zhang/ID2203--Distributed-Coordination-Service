@@ -118,7 +118,7 @@ async fn main() {
         else if input_vector[0] == "add-node"{
             if input_vector.len() == 3 {
                 let correct_v = input_vector[2].to_string();
-                let res = servers.insert(input_vector[1].to_string().parse::<i32>().unwrap(), input_vector[2].to_string())?;
+                let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
                 match res {
                     correct_v=>{
                         println!("Succesfully wrote.")
@@ -135,7 +135,7 @@ async fn main() {
             if input_vector.len() == 1 {
                 println!("Configuration:");
                 println!("id\t|\taddress");
-                for (nodeId, nodeAddr) in servers{
+                for (nodeId, nodeAddr) in &servers{
                     println!("{:?}\t|\t{:?}", nodeId, nodeAddr);
                 }
             } else {
