@@ -67,7 +67,7 @@ async fn main() {
         }
 
         let op_config = OmniPaxosConfig {
-            pid: nodeid,
+            pid: node_id,
             configuration_id: 1,
             peers: peer_ids,
             ..Default::default()
@@ -75,7 +75,7 @@ async fn main() {
         let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
         // !! peer.clone
         let simo = OmniSIMO::new(node_addr.to_string(), peers.clone());
-        let mut ddbb = DDBB::new(nodeid, node_addr.clone(), peers, simo, omni);
+        let mut ddbb = DDBB::new(node_id, node_addr.clone(), peers, simo, omni);
         let ddbb = Arc::new(Mutex::new(ddbb));
 
         let ddbb_copy = ddbb.clone();
@@ -158,19 +158,19 @@ async fn main() {
         //         println!(" -> ERROR: Incorrect command");
         //     }
         // }
-        else if input_vector[0] == "show"{
-            if input_vector.len() == 1 {
-                println!("Configuration:");
-                println!("id\t|\taddress");
-                println!("{:?}\t|\t{:?}", node_id, node_addr);
-                for i in 0..peer_ids.len() {
-                    println!("{:?}\t|\t{:?}", peer_ids[i], peers_addrs[i].clone());
-                    // peers.(peer_ids[i], &peers_addrs[i]);
-                }
-            } else {
-                println!(" -> ERROR: Incorrect command");
-            }
-        }
+        // else if input_vector[0] == "show"{
+        //     if input_vector.len() == 1 {
+        //         println!("Configuration:");
+        //         println!("id\t|\taddress");
+        //         println!("{:?}\t|\t{:?}", node_id, node_addr);
+        //         for i in 0..peer_ids.len() {
+        //             println!("{:?}\t|\t{:?}", peer_ids[i], peers_addrs[i].clone());
+        //             // peers.(peer_ids[i], &peers_addrs[i]);
+        //         }
+        //     } else {
+        //         println!(" -> ERROR: Incorrect command");
+        //     }
+        // }
         else{
             //If it is not a put or a get
             println!(" -> ERROR: Unknown command");
