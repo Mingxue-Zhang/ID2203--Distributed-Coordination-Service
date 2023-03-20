@@ -164,7 +164,8 @@ async fn main() {
                 println!("id\t|\taddress");
                 println!("{:?}\t|\t{:?}", node_id, node_addr);
                 for i in 0..peer_ids.len() {
-                    peers.insert(peer_ids[i], &peers_addrs[i]);
+                    println!("{:?}\t|\t{:?}", peer_ids[i], peers_addrs[i].clone());
+                    // peers.(peer_ids[i], &peers_addrs[i]);
                 }
             } else {
                 println!(" -> ERROR: Incorrect command");
