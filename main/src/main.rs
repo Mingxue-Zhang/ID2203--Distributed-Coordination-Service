@@ -36,34 +36,34 @@ async fn main() {
     servers.insert(3, "127.0.0.1:6552".to_string());
 
     let mut ddbbs: Vec<Arc<Mutex<DDBB>>> = Vec::new();
-    add_to_cluster(ddbbs.clone(), servers.clone(),node_ids.clone());
-    // for (nodeid, nodeaddr) in servers.clone() {
-    //     let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
-    //     let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
-    //     let mut peers: HashMap<NodeId, String> = HashMap::new();
-    //     for peerid in peer_ids.clone() {
-    //         peers.insert(peerid, servers.get(&peerid).unwrap().clone());
-    //     }
+    // add_to_cluster(ddbbs.clone(), servers.clone(),node_ids.clone());
+    for (nodeid, nodeaddr) in servers.clone() {
+        let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
+        let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
+        let mut peers: HashMap<NodeId, String> = HashMap::new();
+        for peerid in peer_ids.clone() {
+            peers.insert(peerid, servers.get(&peerid).unwrap().clone());
+        }
 
-    //     let op_config = OmniPaxosConfig {
-    //         pid: nodeid,
-    //         configuration_id: 1,
-    //         peers: peer_ids,
-    //         ..Default::default()
-    //     };
-    //     let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
-    //     // !! peer.clone
-    //     let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
-    //     let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
-    //     let ddbb = Arc::new(Mutex::new(ddbb));
+        let op_config = OmniPaxosConfig {
+            pid: nodeid,
+            configuration_id: 1,
+            peers: peer_ids,
+            ..Default::default()
+        };
+        let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
+        // !! peer.clone
+        let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
+        let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
+        let ddbb = Arc::new(Mutex::new(ddbb));
 
-    //     let ddbb_copy = ddbb.clone();
-    //     let omni_server_handler = tokio::spawn(async move {
-    //         DDBB::start(ddbb_copy).await.unwrap();
-    //     });
+        let ddbb_copy = ddbb.clone();
+        let omni_server_handler = tokio::spawn(async move {
+            DDBB::start(ddbb_copy).await.unwrap();
+        });
 
-    //     ddbbs.insert(ddbbs.len(), ddbb);
-    // }
+        ddbbs.insert(ddbbs.len(), ddbb);
+    }
 
     sleep(Duration::from_millis(1000)).await;
 
@@ -123,7 +123,7 @@ async fn main() {
                 let new_nodeId:u64= input_vector[1].to_string().parse().unwrap();
                 node_ids.push(new_nodeId);
                 let res = servers.insert(new_nodeId, correct_v).unwrap();
-                add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone()).unwrap();
+                add_to_cluster(ddbbs.clone(), servers.clone() ,new_nodeId).unwrap();
                 // let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
 
                 match res {
@@ -156,8 +156,9 @@ async fn main() {
     }
     
 }
-fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, String>, mut node_ids:Vec<u64>) {
-    for (nodeid, nodeaddr) in servers.clone() {
+fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, String>, mut node_id:u64) {
+        let node_id = NodeId(node_id);
+        let nodeaddr = servers.get(node_id).unwrap();
         let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
         let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
         let mut peers: HashMap<NodeId, String> = HashMap::new();
@@ -183,5 +184,5 @@ fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, 
         });
 
         ddbbs.insert(ddbbs.len(), ddbb);
-    }
+
 }
