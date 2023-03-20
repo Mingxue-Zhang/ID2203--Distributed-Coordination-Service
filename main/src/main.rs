@@ -49,7 +49,7 @@ async fn main() {
     let node_addr:String = node.ip_addr;
     let peer_ids = node.peer_ids;
     let peers_addrs = node.peers_addrs;
-
+    let peer_num = peer_ids.len();
     // let mut servers: HashMap<NodeId, String> = HashMap::new();
     // servers.insert(node_id, node_addr);
     // println!("Initializing node {} with peers {:?}", node_id, node_addr);
@@ -62,7 +62,8 @@ async fn main() {
         // let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
         // let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
         let mut peers: HashMap<NodeId, String> = HashMap::new();
-        for i in 0..peer_ids.len() {
+        for i in 0..peer_num {
+            let temp_node = peer_ids[i].clone();
             let addr = peers_addrs[i].clone();
             peers.insert(peer_ids[i], addr);
         }
@@ -70,7 +71,7 @@ async fn main() {
         let op_config = OmniPaxosConfig {
             pid: node_id,
             configuration_id: 1,
-            peers: peer_ids,
+            peers: peer_ids.clone(),
             ..Default::default()
         };
         let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
@@ -165,9 +166,10 @@ async fn main() {
                 println!("Configuration:");
                 println!("id\t|\taddress");
                 println!("{:?}\t|\t{:?}", node_id, node_addr);
-                for i in 0..peer_ids.len() {
+                for i in 0..peer_num {
+                    let mut temp_node = peer_ids[i].clone();
                     let mut addr = peers_addrs[i].clone();
-                    println!("{:?}\t|\t{:?}", peer_ids[i], addr);
+                    println!("{:?}\t|\t{:?}", temp_node, addr);
                     // peers.(peer_ids[i], &peers_addrs[i]);
                 }
             } else {
