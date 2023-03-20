@@ -119,14 +119,13 @@ async fn main() {
         }
         else if input_vector[0] == "add-node"{
             if input_vector.len() == 3 {
-                //应该再加到ddbbs里，而且现在添加到servers里的node不会在show命令中显示出来
                 let correct_v = input_vector[2].to_string();
                 let new_nodeId:u64= input_vector[1].to_string().parse().unwrap();
-                node_ids.append(new_nodeId);
-                servers.insert(new_nodeId, correct_v);
-                let res = add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone());
+                node_ids.push(new_nodeId);
+                let res = servers.insert(new_nodeId, correct_v).unwrap();
+                add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone()).unwrap();
                 // let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
-                
+
                 match res {
                     correct_v=>{
                         println!("Succesfully added.")
@@ -157,7 +156,7 @@ async fn main() {
     }
     
 }
-fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, String>, mut node_ids:Vec<u64>){
+fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, String>, mut node_ids:Vec<u64>) {
     for (nodeid, nodeaddr) in servers.clone() {
         let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
         let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
