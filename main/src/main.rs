@@ -137,38 +137,38 @@ async fn main() {
             }
 
         }
-        else if input_vector[0] == "add-node"{
-            if input_vector.len() == 3 {
-                let correct_v = input_vector[2].to_string();
-                let new_node_id:u64= input_vector[1].to_string().parse().unwrap();
-                // node_ids.push(new_node_id);
-                // servers.insert(new_node_id, correct_v);
-                // let res= add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone()).unwrap();
-                let res = servers.insert(new_node_id, correct_v).unwrap();
+        // else if input_vector[0] == "add-node"{
+        //     if input_vector.len() == 3 {
+        //         let correct_v = input_vector[2].to_string();
+        //         let new_node_id:u64= input_vector[1].to_string().parse().unwrap();
+        //         // node_ids.push(new_node_id);
+        //         // servers.insert(new_node_id, correct_v);
+        //         // let res= add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone()).unwrap();
+        //         let res = servers.insert(new_node_id, correct_v).unwrap();
 
-                match res {
-                    correct_v=>{
-                        println!("Succesfully added.")
-                    },
-                    _ =>{
-                        println!("Error occurred!")
-                    }
-                }
-            } else {
-                println!(" -> ERROR: Incorrect command");
-            }
-        }
-        else if input_vector[0] == "show"{
-            if input_vector.len() == 1 {
-                println!("Configuration:");
-                println!("id\t|\taddress");
-                for (nodeId, nodeAddr) in &servers{
-                    println!("{:?}\t|\t{:?}", nodeId, nodeAddr);
-                }
-            } else {
-                println!(" -> ERROR: Incorrect command");
-            }
-        }
+        //         match res {
+        //             correct_v=>{
+        //                 println!("Succesfully added.")
+        //             },
+        //             _ =>{
+        //                 println!("Error occurred!")
+        //             }
+        //         }
+        //     } else {
+        //         println!(" -> ERROR: Incorrect command");
+        //     }
+        // }
+        // else if input_vector[0] == "show"{
+        //     if input_vector.len() == 1 {
+        //         println!("Configuration:");
+        //         println!("id\t|\taddress");
+        //         for (nodeId, nodeAddr) in &servers{
+        //             println!("{:?}\t|\t{:?}", nodeId, nodeAddr);
+        //         }
+        //     } else {
+        //         println!(" -> ERROR: Incorrect command");
+        //     }
+        // }
         else{
             //If it is not a put or a get
             println!(" -> ERROR: Unknown command");
