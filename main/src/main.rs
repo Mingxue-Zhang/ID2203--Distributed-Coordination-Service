@@ -29,7 +29,7 @@ async fn main() {
 
     // initialize
     let mut node_ids: Vec<u64> = vec![1, 2, 3];
-    
+
     let mut servers: HashMap<NodeId, String> = HashMap::new();
     servers.insert(1, "127.0.0.1:6550".to_string());
     servers.insert(2, "127.0.0.1:6551".to_string());
@@ -122,18 +122,19 @@ async fn main() {
                 let correct_v = input_vector[2].to_string();
                 let new_nodeId:u64= input_vector[1].to_string().parse().unwrap();
                 node_ids.push(new_nodeId);
-                let res = servers.insert(new_nodeId, correct_v).unwrap();
-                add_to_cluster(ddbbs.clone(), servers.clone() ,new_nodeId).unwrap();
+                // println!("{:?}, {:?}", new_nodeId, correct_v);
+                let res = servers.insert(new_nodeId, correct_v);
+                add_to_cluster(ddbbs.clone(), servers.clone() ,new_nodeId);
                 // let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
 
-                match res {
-                    correct_v=>{
-                        println!("Succesfully added.")
-                    },
-                    _ =>{
-                        println!("Error occurred!")
-                    }
-                }
+                // match res {
+                //     correct_v=>{
+                //         println!("Succesfully added.")
+                //     },
+                //     _ =>{
+                //         println!("Error occurred!")
+                //     }
+                // }
             } else {
                 println!(" -> ERROR: Incorrect command");
             }
@@ -154,35 +155,35 @@ async fn main() {
             println!(" -> ERROR: Unknown command");
         }
     }
-    
+
 }
 fn add_to_cluster(mut ddbbs:Vec<Arc<Mutex<DDBB>>>, mut servers: HashMap<NodeId, String>, mut node_id:u64) {
-        let node_id = NodeId(node_id);
-        let nodeaddr = servers.get(node_id).unwrap();
-        let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
-        let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
-        let mut peers: HashMap<NodeId, String> = HashMap::new();
-        for peerid in peer_ids.clone() {
-            peers.insert(peerid, servers.get(&peerid).unwrap().clone());
-        }
+    let nodeid = node_id;
+    let nodeaddr = servers.get(&nodeid).unwrap();
+    let peer_ids: Vec<&u64> = servers.keys().filter(|&&x| x != nodeid).collect();
+    let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
+    let mut peers: HashMap<NodeId, String> = HashMap::new();
+    for peerid in peer_ids.clone() {
+        peers.insert(peerid, servers.get(&peerid).unwrap().clone());
+    }
 
-        let op_config = OmniPaxosConfig {
-            pid: nodeid,
-            configuration_id: 1,
-            peers: peer_ids,
-            ..Default::default()
-        };
-        let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
-        // !! peer.clone
-        let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
-        let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
-        let ddbb = Arc::new(Mutex::new(ddbb));
+    let op_config = OmniPaxosConfig {
+        pid: nodeid,
+        configuration_id: 1,
+        peers: peer_ids,
+        ..Default::default()
+    };
+    let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
+    // !! peer.clone
+    let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
+    let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
+    let ddbb = Arc::new(Mutex::new(ddbb));
 
-        let ddbb_copy = ddbb.clone();
-        let omni_server_handler = tokio::spawn(async move {
-            DDBB::start(ddbb_copy).await.unwrap();
-        });
+    let ddbb_copy = ddbb.clone();
+    let omni_server_handler = tokio::spawn(async move {
+        DDBB::start(ddbb_copy).await.unwrap();
+    });
 
-        ddbbs.insert(ddbbs.len(), ddbb);
+    ddbbs.insert(ddbbs.len(), ddbb);
 
 }
