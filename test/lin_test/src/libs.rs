@@ -5,6 +5,7 @@ use tokio::time::{sleep, Duration};
 
 use std::collections::HashMap;
 use std::io::Write;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -151,15 +152,10 @@ pub async fn run_ddbb(
 
     for command in commands {
         match command {
-            TestCommandEntry::LINRead { key, value } =>{
+            TestCommandEntry::LINRead { key, value } => {
                 let start = Instant::now();
-                let value = DDBB::lin_read(ddbb.clone(), key.clone())
-                    .await
-                    .unwrap();
-                let mut command = TestCommandEntry::LINRead {
-                    key,
-                    value,
-                };
+                let value = DDBB::lin_read(ddbb.clone(), key.clone()).await.unwrap();
+                let mut command = TestCommandEntry::LINRead { key, value };
                 let mut ent = LogEntryWithTime {
                     nodeid,
                     log: command,
@@ -167,14 +163,11 @@ pub async fn run_ddbb(
                     end: Instant::now(),
                 };
                 local_trace.insert(local_trace.len(), ent);
-            },
+            }
             TestCommandEntry::LINWrite { key, value } => {
                 let start = Instant::now();
                 DDBB::lin_write(ddbb.clone(), key.clone(), value.clone()).await;
-                let command = TestCommandEntry::LINWrite {
-                    key,
-                    value,
-                };
+                let command = TestCommandEntry::LINWrite { key, value };
                 let mut ent = LogEntryWithTime {
                     nodeid,
                     log: command,
@@ -182,7 +175,7 @@ pub async fn run_ddbb(
                     end: Instant::now(),
                 };
                 local_trace.insert(local_trace.len(), ent);
-            },
+            }
         }
     }
 
@@ -190,7 +183,11 @@ pub async fn run_ddbb(
     return local_trace;
 }
 
-pub fn output_trace(key: String, begin_t: Instant, global_trace_of_one_key: &Vec<LogEntryWithTime>) {
+pub fn output_trace(
+    key: String,
+    begin_t: Instant,
+    global_trace_of_one_key: &Vec<LogEntryWithTime>,
+) {
     let mut idx = 0;
     let path = &format!("kv_checker/test/trace_{:}.txt", key);
     let mut file = std::fs::File::create(path).expect("create failed");
@@ -210,7 +207,6 @@ pub fn output_trace(key: String, begin_t: Instant, global_trace_of_one_key: &Vec
                 if is_null {
                     invoke += &format!(":f :read, :value {:?} ", "nil");
                     ok += &format!(":f :read, :value {:?} ", "nil");
-
                 } else {
                     invoke += &format!(":f :read, :value {:?}", val);
                     ok += &format!(":f :read, :value {:?}", val);
@@ -233,12 +229,18 @@ pub fn output_trace(key: String, begin_t: Instant, global_trace_of_one_key: &Vec
             ", :process {:?}, :time {:?}, :index {:?}}}\n",
             nodeid,
             get_durition(begin_t, log.end),
-            idx+1
+            idx + 1
         );
         ent_pair += &format!(
             ", :start {:?}, :end {:?}, :index {:?}}}\n",
-            log.start.checked_duration_since(begin_t).unwrap().as_secs_f64(),
-            log.end.checked_duration_since(begin_t).unwrap().as_secs_f64(),
+            log.start
+                .checked_duration_since(begin_t)
+                .unwrap()
+                .as_secs_f64(),
+            log.end
+                .checked_duration_since(begin_t)
+                .unwrap()
+                .as_secs_f64(),
             idx
         );
         // file.write_all(ent_pair.as_bytes()).expect("write failed");
@@ -248,10 +250,24 @@ pub fn output_trace(key: String, begin_t: Instant, global_trace_of_one_key: &Vec
         idx = idx + 2;
     }
     file.try_clone().unwrap();
-
 }
 
-fn get_durition(t1: Instant, t2: Instant) -> u64{
+pub async fn check(traces: HashMap<String, Vec<LogEntryWithTime>>) {
+    for (key_local, trace) in traces.clone() {
+        // output_trace(key_local.clone(), t, &trace);
+        info!("======================================");
+        info!("Linearizability check of key == {:?}", key_local);
+        let path = &format!("kv_checker/test/trace_{:}.txt", key_local);
+        let mut checker = Command::new("kv_checker/kv_checker")
+            .arg("kv_checker/test/test_demo.txt")
+            .spawn()
+            .unwrap();
+        checker.wait().unwrap();
+        sleep(Duration::from_millis(500)).await;
+    }
+}
+
+fn get_durition(t1: Instant, t2: Instant) -> u64 {
     let mut duri = t2.checked_duration_since(t1).unwrap().as_secs_f64();
     duri = duri * 1000000000.0;
     return duri as u64;
@@ -316,7 +332,7 @@ mod tests {
         println!("eq: {:?}", ent1 < ent2);
         println!("eq1: {:?}", ent1.end < ent2.start);
     }
-    
+
     #[test]
     fn test_duri() {
         let t = Instant::now();

@@ -13,7 +13,7 @@ use ddbb_server::omni_paxos_server::op_data_structure::LogEntry;
 
 use crate::configs::{LOG_CUNCURRENT_NUM, NODES_NUM_OF_CLUSTER};
 use crate::libs::{generate_cluster, output_trace, run_ddbb, TestCommandEntry};
-use libs::{generate_commands, LogEntryWithTime};
+use libs::{generate_commands, LogEntryWithTime, check};
 
 pub mod configs;
 mod libs;
@@ -62,21 +62,13 @@ async fn main() {
         }
     }
 
-    for (key_local, trace) in local_trace.clone() {
-        output_trace(key_local.clone(), t, &trace);
-        info!("Linearizability check of key == {:?}", key_local);
-        let path = &format!("kv_checker/test/trace_{:}.txt", key_local);
-        let mut checker = Command::new("kv_checker/kv_checker")
-            .arg(path)
-            .spawn()
-            .unwrap();
-        checker.wait().unwrap();
-    }
-
+    info!("=====================Check Start========================");
+    check(local_trace).await;
+    info!("===================Check Finished=======================");
     // output_trace("global".to_string(), t, &global_trace);
 
-    let mut checker = Command::new("kv_checker/kv_checker").arg("kv_checker/test/trace_2.txt").spawn().unwrap();
-    checker.wait().unwrap();
+    // let mut checker = Command::new("kv_checker/kv_checker").arg("kv_checker/test/trace_2.txt").spawn().unwrap();
+    // checker.wait().unwrap();
 
     // let command1 = &mut commands[0..LOG_CUNCURRENT_NUM.try_into().unwrap()];
     // for command in command1 {
