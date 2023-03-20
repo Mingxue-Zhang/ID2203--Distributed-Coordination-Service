@@ -71,8 +71,6 @@ async fn main() {
             } else {
                 println!(" -> ERROR: Incorrect  command");
             }
-
-
         }
         else if input_vector[0] == "write" {
             if input_vector.len() == 3 {
@@ -94,7 +92,7 @@ async fn main() {
             if input_vector.len() == 3 {
                 let correct_v = input_vector[2].to_string();
                 let new_node_id:u64= input_vector[1].to_string().parse().unwrap();
-                node_ids.push(new_nodeId);
+                node_ids.push(new_node_id);
                 servers.insert(new_node_id, correct_v);
                 let res= add_to_cluster(ddbbs.clone(), servers.clone() ,node_ids.clone()).unwrap();
                 // let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
