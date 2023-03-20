@@ -45,7 +45,7 @@ async fn main() {
     // initialize
     let node = Node::from_args();
     // let mut node_ids: Vec<u64> = vec![1, 2, 3];
-    let nodeid:u64 = node.pid;
+    let node_id:u64 = node.pid;
     let node_addr:String = node.ip_addr;
     let peer_ids = node.peer_ids;
     let peers_addrs = node.peers_addrs;
@@ -63,7 +63,7 @@ async fn main() {
         // let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
         let mut peers: HashMap<NodeId, String> = HashMap::new();
         for i in 0..peer_ids.len() {
-            peers.insert(peer_ids[i], peers_addrs[i]);
+            peers.insert(peer_ids[i], &peers_addrs[i]);
         }
 
         let op_config = OmniPaxosConfig {
@@ -74,8 +74,8 @@ async fn main() {
         };
         let omni: OmniPaxosInstance = op_config.build(MemoryStorage::default());
         // !! peer.clone
-        let simo = OmniSIMO::new(nodeaddr.to_string(), peers.clone());
-        let mut ddbb = DDBB::new(nodeid, nodeaddr.clone(), peers, simo, omni);
+        let simo = OmniSIMO::new(node_addr.to_string(), peers.clone());
+        let mut ddbb = DDBB::new(nodeid, node_addr.clone(), peers, simo, omni);
         let ddbb = Arc::new(Mutex::new(ddbb));
 
         let ddbb_copy = ddbb.clone();
@@ -89,7 +89,7 @@ async fn main() {
 
     sleep(Duration::from_millis(1000)).await;
 
-    let ddbb1 = ddbbs.get(1).unwrap();
+    let ddbb1 = ddbbs.get(0).unwrap();
     // user cmd
     let sign = format!(">>");
     use std::io::{Write};
@@ -158,17 +158,18 @@ async fn main() {
         //         println!(" -> ERROR: Incorrect command");
         //     }
         // }
-        // else if input_vector[0] == "show"{
-        //     if input_vector.len() == 1 {
-        //         println!("Configuration:");
-        //         println!("id\t|\taddress");
-        //         for (nodeId, nodeAddr) in &servers{
-        //             println!("{:?}\t|\t{:?}", nodeId, nodeAddr);
-        //         }
-        //     } else {
-        //         println!(" -> ERROR: Incorrect command");
-        //     }
-        // }
+        else if input_vector[0] == "show"{
+            if input_vector.len() == 1 {
+                println!("Configuration:");
+                println!("id\t|\taddress");
+                println!("{:?}\t|\t{:?}", node_id, node_addr);
+                for i in 0..peer_ids.len() {
+                    peers.insert(peer_ids[i], &peers_addrs[i]);
+                }
+            } else {
+                println!(" -> ERROR: Incorrect command");
+            }
+        }
         else{
             //If it is not a put or a get
             println!(" -> ERROR: Unknown command");
