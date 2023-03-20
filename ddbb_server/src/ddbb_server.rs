@@ -255,8 +255,8 @@ impl DDBB {
             .unwrap()
             .read_decided_suffix(self.wal_store.lock().unwrap().diceded());
         if let Some(entrys) = committed_ents {
-            self.wal_store.lock().unwrap().idx += 1;
             for entry in entrys {
+                self.wal_store.lock().unwrap().idx += 1;
                 match entry {
                     OmniLogEntry::Decided(log) => match log.clone() {
                         LogEntry::SetValue { key, value } => {

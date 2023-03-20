@@ -48,7 +48,9 @@ impl OmniPaxosServer {
                 _ = outgoing_interval.tick() => { self.send_outgoing_msgs().await; },
                 Ok(in_msg) = OmniSIMO::receive_message(self.omni_simo.clone()) => {
                     if let Message::SequencePaxos(msg) = in_msg.clone(){
-                        debug!("RECEIVE: {:?}", msg);
+                        // debug!("RECEIVE: {:?}", msg);
+                    } else {
+                        // debug!("RECEIVE: {:?}", in_msg);
                     };
                     self.omni_paxos_instance.lock().unwrap().handle_incoming(in_msg); },
                 else => { }

@@ -1,21 +1,8 @@
-#![allow(unused)]
-use tokio::time::{sleep, Duration};
-use tokio::{runtime::Builder, sync::mpsc, time};
+use std::time::Instant;
 
-#[tokio::main]
-async fn main() {
-    let handler = tokio::spawn(async {
-        tokio::spawn(async {
-            async {
-                sleep(Duration::from_millis(2000)).await;
-    
-                println!("temp");
-            }
-            .await
-        })
-        .await;
-    });
-    sleep(Duration::from_millis(1000)).await;
-    handler.abort();
-    loop {}
+
+fn main() {
+    let t = Instant::now();
+    println!("now: {:?}", Instant::now().checked_duration_since(t).unwrap().as_secs_f64());
+
 }
