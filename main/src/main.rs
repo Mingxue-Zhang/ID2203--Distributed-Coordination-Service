@@ -18,13 +18,17 @@ use ddbb_server::omni_paxos_server::{
     op_connection::OmniSIMO, op_data_structure::LogEntry, op_data_structure::Snapshot,
     OmniPaxosInstance, OmniPaxosServer,
 };
+//StructOpt - used for getting input from the command line
+use structopt::StructOpt;
+//Serde - used for serializing (turning into bytes) and deserializing messages
+use serde::{Serialize, Deserialize};
 use omnipaxos_storage::memory_storage::MemoryStorage;
-
+#[derive(Debug, Serialize, Deserialize, StructOpt)]
 struct Node {
     #[structopt(long)]
     pid: u64,
     #[structopt(long)]
-    ip_addr: string,
+    ip_addr: String,
 }
 #[tokio::main]
 async fn main() {
