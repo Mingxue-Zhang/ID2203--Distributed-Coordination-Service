@@ -117,11 +117,12 @@ async fn main() {
         }
         else if input_vector[0] == "add-node"{
             if input_vector.len() == 3 {
+                //应该再加到ddbbs里，而且现在添加到servers里的node不会在show命令中显示出来
                 let correct_v = input_vector[2].to_string();
                 let res = servers.insert(input_vector[1].to_string().parse::<u64>().unwrap(), input_vector[2].to_string()).unwrap();
                 match res {
                     correct_v=>{
-                        println!("Succesfully wrote.")
+                        println!("Succesfully added.")
                     },
                     _ =>{
                         println!("Error occurred!")
