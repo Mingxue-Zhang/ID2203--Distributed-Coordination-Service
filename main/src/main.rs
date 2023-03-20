@@ -63,7 +63,8 @@ async fn main() {
         // let peer_ids: Vec<u64> = peer_ids.iter().copied().map(|x| *x).collect();
         let mut peers: HashMap<NodeId, String> = HashMap::new();
         for i in 0..peer_ids.len() {
-            peers.insert(peer_ids[i], &peers_addrs[i]);
+            let addr = peers_addrs[i].clone();
+            peers.insert(peer_ids[i], addr);
         }
 
         let op_config = OmniPaxosConfig {
@@ -110,7 +111,8 @@ async fn main() {
                 let res = DDBB::lin_read(ddbb1.clone(), input_vector[1].to_string()).await;
                 match res {
                     Ok(value)=>{
-                        println!("{:?}", value.unwrap())
+                        
+                        println!("{:?}", String::from_utf8(value.unwrap()).expect("Failed to convert Vec<u8> to String"))
                     },
                     Err(e) =>{
                         println!("Error occurred!")
@@ -158,19 +160,20 @@ async fn main() {
         //         println!(" -> ERROR: Incorrect command");
         //     }
         // }
-        // else if input_vector[0] == "show"{
-        //     if input_vector.len() == 1 {
-        //         println!("Configuration:");
-        //         println!("id\t|\taddress");
-        //         println!("{:?}\t|\t{:?}", node_id, node_addr);
-        //         for i in 0..peer_ids.len() {
-        //             println!("{:?}\t|\t{:?}", peer_ids[i], peers_addrs[i].clone());
-        //             // peers.(peer_ids[i], &peers_addrs[i]);
-        //         }
-        //     } else {
-        //         println!(" -> ERROR: Incorrect command");
-        //     }
-        // }
+        else if input_vector[0] == "show"{
+            if input_vector.len() == 1 {
+                println!("Configuration:");
+                println!("id\t|\taddress");
+                println!("{:?}\t|\t{:?}", node_id, node_addr);
+                for i in 0..peer_ids.len() {
+                    let mut addr = peers_addrs[i].clone();
+                    println!("{:?}\t|\t{:?}", peer_ids[i], addr);
+                    // peers.(peer_ids[i], &peers_addrs[i]);
+                }
+            } else {
+                println!(" -> ERROR: Incorrect command");
+            }
+        }
         else{
             //If it is not a put or a get
             println!(" -> ERROR: Unknown command");
