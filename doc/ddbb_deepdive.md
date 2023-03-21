@@ -6,7 +6,7 @@
 
 ## 1 Introduction
 
-Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it guaranteens both Serializable and Linearizable operations. We also completed several testing related performance and complare our solution with etcd. At the end of the day, we can say our system, DDBB, can reach 20% of the performance of etcd.
+Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it guaranteens both Sequential (Not fully supported) and Linearizability consistency in doing operations. We also completed several testing related performance and complare our solution with etcd. At the end of the day, we can say our system, DDBB, can reach 20% of the performance of etcd.
 
 ### 1-1 Project group info
 
@@ -23,7 +23,7 @@ Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store
 ### 2-1 Functions
 
 - Stable and high-performance connection layer implementation for OmniPaxos, which is using failure-recovery model.
-- Linearizable read and write, sequential read and write, delete operations on a KV store.
+- Linearizable read and write, sequential read and write, and delete operations on a KV store.
 - Crash recovery when majority connected.
 - Tolerates and recovers from partial connectivity.
 - Snapshots and compacts.
@@ -534,9 +534,15 @@ http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 --initial-adver
 
 The official Benchmark CLI tool from etcd. Can be found at [Benchmark](https://github.com/etcd-io/etcd/tree/v3.4.16/tools/benchmark).
 
+```bash
+#run build when under the etcd folder
+
+go run ./tools/benchmark --endpoints=http://127.0.0.1:2379,http://127.0.0.1:22379,http://127.0.0.1:32379 --target-leader --conns=1 --clients=1 put --key-size=8 --sequential-keys --total=10000 --val-size=256
+```
+
 #### 5-3-2 DDBB set up
 
-Start our server with `cargo run --bin ddbb_server`, then run into different cases. More details can be found in our repo.
+Start our server with `cargo run`, then run into different cases. More details can be found in our repo.
 
 ### 5-4 Test Cases
 
@@ -552,7 +558,7 @@ As can be seen from the graph, the cluster size has almost no effect on the read
 
 <img src="./ddbb_deepdive.assets/requests_size.png" alt="requests-size" title="requests size" style="zoom:50%;" />
 
-This is because linearizable read/write conversions are time-consuming when the request volume is 100000. If added to the graph it would affect the data deflation and become unreadable, so only their values can be marked. Through several tests, we found that the performance of reads and writes grows linearly and is almost proportional to the ratio between requests. For example, if the request increases ten times, the processing time becomes similarly ten times.
+We didn't put the time cost for 100,000 requests in the figure, because linearizable read/write operations conersions are time-consuming. If added to the graph it would affect the data deflation and become unreadable, so only their values can be used. Through several tests, we found that the performance of reads and writes grows linearly and is almost proportional to the ratio between requests. For example, if the request increases ten times, the processing time becomes similarly ten times.
 
 #### 5-4-3 Serializable and Linearizable
 
@@ -560,7 +566,7 @@ This is because linearizable read/write conversions are time-consuming when the 
 
 <img src="./ddbb_deepdive.assets/reads.png" alt="reads" title="reads" style="zoom:50%;" />
 
-In our tests, linearizable write and read take a lot of time, about 5-5 times longer than serializable. The main reasons for this are Linearizable read requests go through a quorum of cluster members for consensus to fetch the most recent data. Serializable read requests are cheaper than linearizable reads since they are served by any single node, instead of a quorum of members, in exchange for possibly serving stale data.
+In our tests, linearizable writes and reads take a lot of time, about 4-5 times longer than sequential writes. The main reasons for this are Linearizable read requests go through a quorum of cluster members for consensus to fetch the most recent data. Sequential read requests are cheaper than linearizable reads since they are served by any single node, instead of a quorum of members, in exchange for possibly serving stale data.
 
 #### 5-4-4 Single / Multiple Write Requests
 
@@ -570,18 +576,18 @@ Single-threaded compared to multi-threaded, Multi-threaded can save 1/3 of the t
 |          | 1000 Requests - Single           | 10000 Requests - Single         | 10000 Requests - Single           | 1000 Requests - Concurrent           |1000 Requests - Concurrent           |1000 Requests - Concurrent           |
 | ------------- | --------------- |--------------- |--------------- |--------------- |--------------- |--------------- |
 | Writes   |  2.0932 secs  | 20.1689 secs  |193.6696 secs  |  1.5353 secs| 16.1182 secs|  148.1724 secs|
-| Serializable Reads | 0.2688 secs  |2.5756 secs.  | 25.3775 secs|  0.2422 secs| 2.3705 secs| 22.7303 secs|
+| Sequential Reads | 0.2688 secs  |2.5756 secs.  | 25.3775 secs|  0.2422 secs| 2.3705 secs| 22.7303 secs|
 | Linearizable Reads| 0.7025secs |7.1154 secs  | 71.8752 secs|  0.5561 secs| 5.7274 secs|  54.8549 secs|
 
 #### 5-4-5 Maximum operation per unit time
 
-After our testing, our DDBB can support writing 7000 records and reading 100000 data per minute with serializable operations.  To ensure linearizable operations, the performance of our solution is significantly lower. This test is performed by using the process sleep time for a cluster of 5 nodes is **10 milliseconds**; **5 milliseconds** for 3 nodes to ensure no data loss.
+After our testing, our DDBB can support writing 7000 records and reading 100000 data per minute with operations guaranteed sequential consistency.  To ensure linearizable operations, the performance of our solution is significantly lower. This test is performed by using the process sleep time for a cluster of 5 nodes is **10 milliseconds**; **5 milliseconds** for 3 nodes to ensure no data loss.
 
 #### 5-4-6 Etcd comparison
 
 <img src="./ddbb_deepdive.assets/etcd-ddbb.png" alt="ddbb-etcd" title="ddbb etcd" style="zoom: 67%;" />
 
-According to our results, with seq writes, we can achieve 30% of the speed of etcd in various serializable operations and even faster reads than etcd in the case of seq reads.However, our performance becomes extremely poor when it comes to linearizable reads and writes. It can only reach about 5% of the performance of etcd, and 1/6 of the performance of etcd in the multi-threaded case.  One of the reasons is that we have to let the threads sleep for a while to ensure that the data can be stored and read without errors. This is the main area of improvement for us in the future.
+According to our results, with sequential writes, we can achieve 30% of the speed of etcd in various  operations guaranteed sequential consistency and even faster reads than etcd in the case of sequential reads. However, our performance becomes extremely poor when it comes to linearizable reads and writes. It can only reach about 5% of the performance of etcd, and 1/6 of the performance of etcd in the multi-threaded case.  One of the reasons is that we have to let the threads sleep for a while to ensure that the data can be stored and read without errors. This is the main area of improvement for us in the future.
 
 #### 5-4-7 Partial Connectivity
 
@@ -596,15 +602,15 @@ Etcd supports fail recovery like the following, firstly start cluster and kill o
 
 ## 6 Future Work
 
-How can your work be further extended and improved in the future (either by you or others)? You can also mention things you wanted to solve but there was simply not enough time.
+<!-- How can your work be further extended and improved in the future (either by you or others)? You can also mention things you wanted to solve but there was simply not enough time. -->
 
-As mentioned above, as We currently haven't found a specific reason why our program is taking an extremely long time to operate in lin. So if we have time, we should spend more time debugging to find the cause or come up with a more efficient solution. And to make the whole project better and more practical, one of the features should be user groups so that users can operate according to their assigned role, which is, of course an add-on feature.
+As mentioned above, as we currently haven't found a specific reason why our program is taking an extremely long time to support linearizable consistency. So if we have time, we should spend more time debugging to find the cause or come up with a more efficient solution. And to make the whole project better and more practical, one of the features should be user groups so that users can operate according to their assigned role, which is, of course an add-on feature.
 
 ## 7 Summary
 
-To sum up, the project is very interesting, and kind of demanding since most of my teamnates are not that familiar with Rust language. The time is also very limited, so the pressure is a bit high.  
+To sum up, the project is very interesting, and kind of demanding since most of my teamnates are not that familiar with Rust language. But they are all cool and nice guys. We used GitHub to collabrate and will regurally hold team meeting. Since the time is also very limited, so the pressure is a bit high.  
 
-However, we still finished the project and achieved several functionality points, such as linearizable & serializable read and write, and connection layer implementation for OmniPaxos, which uses using failure-recovery model. And we also completed testing, and even though the performance wasn't that great, it turned out that the features we wanted to verify worked as expected. Through multiple tests, we have a deeper understanding of linearizable and serializable. All in all, I learned a lot from the project.
+However, we still finished the project and achieved several functionality points, such as linearizable & ssequential consistency, and connection layer implementation for OmniPaxos, which uses using failure-recovery model. And we also completed testing, and even though the performance wasn't that great, it turned out that the features we wanted to verify worked as expected. Through multiple tests, we have a deeper understanding of linearizable and serializable. All in all, we learned a lot from the project.
 
 ## 8 A Big Defect With tikio::select
 
