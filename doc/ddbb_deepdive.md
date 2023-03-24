@@ -6,7 +6,7 @@
 
 ## 1 Introduction
 
-Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it guaranteens both Sequential (Not fully supported) and Linearizability consistency in doing operations. We also completed several testing related performance and complare our solution with etcd. At the end of the day, we can say our system, DDBB, can reach 20% of the performance of etcd.
+Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store functionality and it guaranteens both Serializable and Linearizable operations. We also completed several testing related performance and complare our solution with etcd. At the end of the day, we can say our system, DDBB, can reach 20% of the performance of etcd.
 
 ### 1-1 Project group info
 
@@ -22,19 +22,19 @@ Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store
 
 ### 2-1 Functions
 
-- Stable and high-performance connection layer implementation for OmniPaxos, which is using failure-recovery model.
-- Linearizable read and write, sequential read and write, and delete operations on a KV store.
-- Crash recovery when majority connected.
-- Tolerates and recovers from partial connectivity.
-- Snapshots and compacts.
+- Stable and high-performance **connection layer**  implementation for OmniPaxos, which is using failure-recovery model.
+- **Linearizable** read and write, sequential read and write, delete operations on a KV store.
+- **Crash recovery** when majority connected.
+- Tolerates and recovers from **partial connectivity**.
+- **Snapshots** and **compacts**.
 
 ### 2-2 Testing
 
-- Completed unit testing for all the components.
-- Parallel operation input testing and global trace analyses for linearizability.
-- Randomly nodes down and recover testing for crash recovery.
+- Completed **unit testing** for all the components.
+- Parallel operation input testing and global trace **analyses for linearizability**.
+- Randomly nodes down and recover testing for **crash recovery**.
 - Randomly connection cut off and consistency analyses for partial connectivity tolerance.
-- Benchmark testing and etcd comparation
+- **Benchmark** testing and etcd comparation
 
 ## 3 Design and implementation
 
@@ -44,7 +44,7 @@ Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store
 
 ### 3-2 Connection layer: OmniSIMO
 
->Omni Simo: a single incoming and multiple outgoing connection module for OmniPaxos instances' communication.
+>Omni Simo: a **single incoming and multiple outgoing** connection module for OmniPaxos instances' communication.
 >
 >Which is the most important part of our project.
 
@@ -140,7 +140,7 @@ const RECONNECT_MSG: &str = "##RECONNECT";
 let reconn_msg = Frame::Error(RECONNECT_MSG);
 ```
 
-#### 3-2-3 Data structure of DDBB
+#### 3-2-3 Data structure of DDBB 
 
 > Code: ddbb_libs/src/data_structure.rs
 
@@ -392,7 +392,17 @@ The whole workflow of `LinRead` looks like this:
 
 #### 3-4-3 Snapshots and compacts
 
-In out system, the snapshots and compacts happen outside the OmniPaxos.
+In out system, the snapshots and compacts happen outside the OmniPaxos. The algorithm looks like this:
+
+<img src="ddbb_deepdive.assets/image-20230321093013351.png" alt="image-20230321093013351" style="zoom:67%;" />
+
+#### 3-4-4 Partial connection recover
+
+With ddbbSimo, there will be `reconnect` signs delivered when reconnect happens, than the `ddbb` can send `reconnect` msg to `omniPaxos`:
+
+```rust
+omni.reconnected(nodeid);
+```
 
 ### 3-5 DDBB Client
 
@@ -419,13 +429,13 @@ Here we use an asynchronized function *message_receiver* to listen to the respon
 
 The function reads bytes stored in receiver buffer and checks which the message type is, which is asynchronized and guarantees ordered data transferring.
 
-## 4 Testing
+## 4 Test
 
-### 4-1 Unit testing
+### 4-1 Unit test
 
 To see the unit test cases, just dive into each component defination code.
 
-### 4-2 Linearizability
+### 4-2 Integrated test
 
 #### 4-2-1 Test environment
 
@@ -439,49 +449,51 @@ fn main() {
 }
 ```
 
-#### 4-2-2 Linearizability analyses
+#### 4-2-2 Test design
 
-Thanks to the globe time, after running of evey test case, each node on the cluster could output the local trace with time stamp, which can be used to analyses linearizability.
-
-<img src="ddbb_deepdive.assets/image-20230319092656707.png" alt="image-20230319092656707" style="zoom: 50%;" />
-
-#### 4-2-3 Result
-
-All the linearizable test cases were successfully passed. More info can be given when on site demonstration.
-
-### 4-3 Crash recovery
-
-#### 4-3-1 Test environment
-
-With rust multi process model all the processes are isolated, so one node can safelt down and up without any side effects.
+The test is all about randomizing, including commands generating, commands distributing and network random delay.
 
 ```rust
-fn main() {
-    // code...
-    let exit_code = real_main();
-    std::process::exit(exit_code);
+// commands generating
+LINWrite {
+    key: rng.gen_range(0..num / LOG_CUNCURRENT_NUM),
+    value: generate_ran_u8_lst(1),
 }
 ```
 
-#### 4-3-2 Result
+// network random delay
+loop{
+    sleep(random_delay()).await;
+    simo.write_frame(&omni_msg_entry).await;
+}
 
-All the crash recoverytest cases were successfully passed. More info can be given when on site demonstration.
-
-### 4-4 Partial connectivity tolerance.
-
-#### 4-2-1 Test environment
-
-The attribute in `OmniSIMO::connected` is mainly used to filter messages, but in the partial connectivity test, we can make it public and enable the outside environment to actively change the connection information to build network partial connectivity.
-
-```rust
-simo_of_node.connected.retain(|&x| { /*partial connectivity logic*/ });
 ```
 
-#### 4-3-2 Result
+We also an introduce netwrok failure or partial connection using correspongding config.
 
-All the partial connectivity cases were successfully passed. More info can be given when on site demonstration.
+```rust
+pub const ENABLE_PARTIAL_CONNECTION: bool = true;
+```
 
-## 5 Benchmark  
+The test work flow looks like this:
+
+<img src="ddbb_deepdive.assets/image-20230321091310344.png" alt="image-20230321091310344" style="zoom: 67%;" />
+
+#### 4-2-3 Linearizability analyses
+
+> The framewrok we used to analys linearizability is **[Solitaire](https://github.com/CatKang/Solitaire)**
+
+Thanks to the globe time, after running of evey test case, each node on the cluster could output the local trace with time stamp, which can be used to analyses linearizability. And all the events are outputed into files:
+
+<img src="ddbb_deepdive.assets/image-20230321092406796.png" alt="image-20230321092406796" style="zoom: 67%;" />
+
+#### 4-2-4 Result
+
+All the linearizable test cases were successfully passed. 
+
+<img src="ddbb_deepdive.assets/image-20230321092440064.png" alt="image-20230321092440064" style="zoom:67%;" />
+
+## 5 Benchmark  test
 
 Since our project is using omni-paxos to emulate etcd, we chose to perform performance tests. Our main test directions are read and write performance tests, single-threaded and multi-threaded, and performance comparison with etcd.
 
@@ -533,12 +545,6 @@ http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 --initial-adver
 ```
 
 The official Benchmark CLI tool from etcd. Can be found at [Benchmark](https://github.com/etcd-io/etcd/tree/v3.4.16/tools/benchmark).
-
-```bash
-#run build when under the etcd folder
-
-go run ./tools/benchmark --endpoints=http://127.0.0.1:2379,http://127.0.0.1:22379,http://127.0.0.1:32379 --target-leader --conns=1 --clients=1 put --key-size=8 --sequential-keys --total=10000 --val-size=256
-```
 
 #### 5-3-2 DDBB set up
 
