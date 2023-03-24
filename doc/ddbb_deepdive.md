@@ -22,19 +22,19 @@ Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store
 
 ### 2-1 Functions
 
-- Stable and high-performance connection layer implementation for OmniPaxos, which is using failure-recovery model.
-- Linearizable read and write, sequential read and write, delete operations on a KV store.
-- Crash recovery when majority connected.
-- Tolerates and recovers from partial connectivity.
-- Snapshots and compacts.
+- Stable and high-performance **connection layer**  implementation for OmniPaxos, which is using failure-recovery model.
+- **Linearizable** read and write, sequential read and write, delete operations on a KV store.
+- **Crash recovery** when majority connected.
+- Tolerates and recovers from **partial connectivity**.
+- **Snapshots** and **compacts**.
 
 ### 2-2 Testing
 
-- Completed unit testing for all the components.
-- Parallel operation input testing and global trace analyses for linearizability.
-- Randomly nodes down and recover testing for crash recovery.
+- Completed **unit testing** for all the components.
+- Parallel operation input testing and global trace **analyses for linearizability**.
+- Randomly nodes down and recover testing for **crash recovery**.
 - Randomly connection cut off and consistency analyses for partial connectivity tolerance.
-- Benchmark testing and etcd comparation
+- **Benchmark** testing and etcd comparation
 
 ## 3 Design and implementation
 
@@ -44,7 +44,7 @@ Our goal is to build a etcd-like system with Omni-Paxos. We achieved a k-v store
 
 ### 3-2 Connection layer: OmniSIMO
 
->Omni Simo: a single incoming and multiple outgoing connection module for OmniPaxos instances' communication.
+>Omni Simo: a **single incoming and multiple outgoing** connection module for OmniPaxos instances' communication.
 >
 >Which is the most important part of our project.
 
@@ -90,6 +90,8 @@ APIs supplied by:
 #### 3-2-3 Connection
 
 > Code: ddbb_libs/src/frame.rs
+
+<img src="ddbb_deepdive.assets/image-20230321112032220.png" alt="image-20230321112032220" style="zoom:33%;" />
 
 The `Connection` model is to build an one2one network connection between two nodes. Based on `tokio::net::TcpStream`.
 
@@ -140,9 +142,11 @@ const RECONNECT_MSG: &str = "##RECONNECT";
 let reconn_msg = Frame::Error(RECONNECT_MSG);
 ```
 
-#### 3-2-3 Data structure of DDBB
+#### 3-2-3 Data structure of DDBB 
 
 > Code: ddbb_libs/src/data_structure.rs
+
+<img src="ddbb_deepdive.assets/image-20230321112137846.png" alt="image-20230321112137846" style="zoom:33%;" />
 
 `ddbb` has different data structures for different view of the system.
 
@@ -187,6 +191,8 @@ The structure of data transported by network looks like this:
 #### 3-2-5 OmniSimo
 
 > Code: ddbb_server/src/omni_paxos_server/op_connection.rs
+
+<img src="ddbb_deepdive.assets/image-20230321112817951.png" alt="image-20230321112817951" style="zoom:33%;" />
 
 The single incoming and multiple outgoing group communication connection model for OmniPaxos instances' communication.
 
@@ -284,6 +290,8 @@ connected.insert(0, reveiver_id);
 
 ### 3-3 OmniPaxos server
 
+<img src="ddbb_deepdive.assets/image-20230321112231258.png" alt="image-20230321112231258" style="zoom: 50%;" />
+
 Similar structure with the OmniPaxos in `omnipaxos/examples/kv_store`:
 
 ```rust
@@ -305,6 +313,8 @@ impl OmniPaxosServer {
 ### 3-4 DDBB core
 
 > Code: ddbb_server/src/ddbb_server.rs
+
+![image-20230321112323248](ddbb_deepdive.assets/image-20230321112323248.png)
 
 #### 3-4-1 Local storage
 
@@ -392,9 +402,21 @@ The whole workflow of `LinRead` looks like this:
 
 #### 3-4-3 Snapshots and compacts
 
-In out system, the snapshots and compacts happen outside the OmniPaxos.
+In out system, the snapshots and compacts happen outside the OmniPaxos. The algorithm looks like this:
+
+<img src="ddbb_deepdive.assets/image-20230321093013351.png" alt="image-20230321093013351" style="zoom:67%;" />
+
+#### 3-4-4 Partial connection recover
+
+With ddbbSimo, there will be `reconnect` signs delivered when reconnect happens, than the `ddbb` can send `reconnect` msg to `omniPaxos`:
+
+```rust
+omni.reconnected(nodeid);
+```
 
 ### 3-5 DDBB Client
+
+<img src="ddbb_deepdive.assets/image-20230321112351483.png" alt="image-20230321112351483" style="zoom: 50%;" />
 
 Basically, the client of ddbb continuously listens to input from user in a loop and parses that input into a command entry. And all transferring data are packed into the data structure `Frame`.
 
@@ -419,13 +441,13 @@ Here we use an asynchronized function *message_receiver* to listen to the respon
 
 The function reads bytes stored in receiver buffer and checks which the message type is, which is asynchronized and guarantees ordered data transferring.
 
-## 4 Testing
+## 4 Test
 
-### 4-1 Unit testing
+### 4-1 Unit test
 
 To see the unit test cases, just dive into each component defination code.
 
-### 4-2 Linearizability
+### 4-2 Integrated test
 
 #### 4-2-1 Test environment
 
@@ -439,49 +461,50 @@ fn main() {
 }
 ```
 
-#### 4-2-2 Linearizability analyses
+#### 4-2-2 Test design
 
-Thanks to the globe time, after running of evey test case, each node on the cluster could output the local trace with time stamp, which can be used to analyses linearizability.
-
-<img src="ddbb_deepdive.assets/image-20230319092656707.png" alt="image-20230319092656707" style="zoom: 50%;" />
-
-#### 4-2-3 Result
-
-All the linearizable test cases were successfully passed. More info can be given when on site demonstration.
-
-### 4-3 Crash recovery
-
-#### 4-3-1 Test environment
-
-With rust multi process model all the processes are isolated, so one node can safelt down and up without any side effects.
+The test is all about randomizing, including commands generating, commands distributing and network random delay.
 
 ```rust
-fn main() {
-    // code...
-    let exit_code = real_main();
-    std::process::exit(exit_code);
+// commands generating
+LINWrite {
+    key: rng.gen_range(0..num / LOG_CUNCURRENT_NUM),
+    value: generate_ran_u8_lst(1),
 }
+
+// network random delay
+loop{
+    sleep(random_delay()).await;
+    simo.write_frame(&omni_msg_entry).await;
+}
+
 ```
 
-#### 4-3-2 Result
-
-All the crash recoverytest cases were successfully passed. More info can be given when on site demonstration.
-
-### 4-4 Partial connectivity tolerance.
-
-#### 4-2-1 Test environment
-
-The attribute in `OmniSIMO::connected` is mainly used to filter messages, but in the partial connectivity test, we can make it public and enable the outside environment to actively change the connection information to build network partial connectivity.
+We also an introduce netwrok failure or partial connection using correspongding config.
 
 ```rust
-simo_of_node.connected.retain(|&x| { /*partial connectivity logic*/ });
+pub const ENABLE_PARTIAL_CONNECTION: bool = true;
 ```
 
-#### 4-3-2 Result
+The test work flow looks like this:
 
-All the partial connectivity cases were successfully passed. More info can be given when on site demonstration.
+<img src="ddbb_deepdive.assets/image-20230321091310344.png" alt="image-20230321091310344" style="zoom: 67%;" />
 
-## 5 Benchmark  
+#### 4-2-3 Linearizability analyses
+
+> The framewrok we used to analys linearizability is **[Solitaire](https://github.com/CatKang/Solitaire)**
+
+Thanks to the globe time, after running of evey test case, each node on the cluster could output the local trace with time stamp, which can be used to analyses linearizability. And all the events are outputed into files:
+
+<img src="ddbb_deepdive.assets/image-20230321092406796.png" alt="image-20230321092406796" style="zoom: 67%;" />
+
+#### 4-2-4 Result
+
+All the linearizable test cases were successfully passed. 
+
+<img src="ddbb_deepdive.assets/image-20230321092440064.png" alt="image-20230321092440064" style="zoom:67%;" />
+
+## 5 Benchmark  test
 
 Since our project is using omni-paxos to emulate etcd, we chose to perform performance tests. Our main test directions are read and write performance tests, single-threaded and multi-threaded, and performance comparison with etcd.
 
